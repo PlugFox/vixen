@@ -14,7 +14,7 @@ class Bot {
     http.Client? client,
     int? offset,
     Duration interval = const Duration(seconds: 30),
-    void Function(Map<String, Object?> update)? onUpdate,
+    void Function(int id, Map<String, Object?> update)? onUpdate,
   }) : _token = token,
        _client = client ?? http.Client(),
        _offset = offset ?? 0,
@@ -24,10 +24,13 @@ class Bot {
   final String _token;
   final http.Client _client;
   final Duration _interval;
+
+  /// The offset of the last update.
+  int get offset => _offset;
   int _offset;
   Completer<void>? _poller;
 
-  final void Function(Map<String, Object?> update)? _onUpdate;
+  final void Function(int id, Map<String, Object?> update)? _onUpdate;
 
   Future<List<Map<String, Object?>>> _getUpdates(Uri url) async {
     final response = await _client.get(url);
@@ -49,8 +52,10 @@ class Bot {
   }
 
   void _handleUpdate(Map<String, Object?> update) {
-    if (update['update_id'] case int id) _offset = math.max(id + 1, _offset);
-    _onUpdate?.call(update);
+    if (update['update_id'] case int id) {
+      _offset = math.max(id + 1, _offset);
+      _onUpdate?.call(id, update);
+    }
   }
 
   void start() {

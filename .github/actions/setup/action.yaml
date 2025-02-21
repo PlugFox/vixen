@@ -48,10 +48,10 @@ runs:
         echo /home/runner/.pub-cache/bin >> $GITHUB_PATH
         dart pub get
 
-    #- name: ⏲️ Run build runner
-    #  shell: bash
-    #  run: |
-    #    dart run build_runner build --delete-conflicting-outputs --release
+    - name: ⏲️ Run build runner
+      shell: bash
+      run: |
+        dart run build_runner build --delete-conflicting-outputs --release
 
     - name: 📥 Save Pub modules
       id: cache-pub-save

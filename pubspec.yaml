@@ -65,7 +65,7 @@ dependencies:
   l: ^5.0.0
 
   # Database
-  #drift: ^2.23.0
+  drift: ^2.25.1
 
   # Network
   http: ^1.2.2
@@ -81,7 +81,7 @@ dev_dependencies:
   test: any
 
   # Code generation
-  build_runner: ^2.4.13
-  #drift_dev: ^2.23.0
+  build_runner: ^2.4.15
+  drift_dev: ^2.25.2
   pubspec_generator: ^4.1.0-pre.1
   #json_serializable: ^6.8.0

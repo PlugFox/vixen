@@ -10,17 +10,31 @@ void main(List<String> args) {
   l.capture(
     () => runZonedGuarded(
       () async {
+        l.i('Preparing database');
+        const updateIdKey = 'update_id';
+        final db = Database.lazy();
+        await db.refresh();
         l.i('Starting bot');
         final messageHandler = MessageHandler();
-        Bot(
+        var lastOffset = db.getKey<int>(updateIdKey);
+        final bot = Bot(
           token: arguments.token,
-          onUpdate: (update) {
+          offset: lastOffset,
+          onUpdate: (id, update) {
             l.d('Received update: $update');
             if (update['message'] case Map<String, Object?> message) {
               messageHandler(message);
             }
           },
-        ).start();
+        )..start();
+        // Periodically update the offset
+        Timer.periodic(const Duration(seconds: 5), (_) async {
+          if (bot.offset > (lastOffset ?? 0)) {
+            db.setKey(updateIdKey, bot.offset);
+            lastOffset = bot.offset;
+            l.d('Updated offset to ${bot.offset}');
+          }
+        });
       },
       (error, stackTrace) {
         l.e('An top level error occurred. $error', stackTrace);

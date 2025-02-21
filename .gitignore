@@ -45,14 +45,14 @@ l/
 # is commented out by default.
 #.vscode/
 
-# Flutter/Dart/Pub related
+# Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
 /build/
+out/
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -62,11 +62,6 @@ app.*.symbols
 
 # Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
 
 # Pana
 log.pana.json
@@ -81,5 +76,13 @@ log.pana.json
 # Example build output
 example/out/
 
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
 # Config file
 .env
+
+# Data
+data/

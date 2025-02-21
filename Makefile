@@ -33,6 +33,13 @@ get: ## Get the dependencies
 outdated: get ## Check for outdated dependencies
 	@dart pub outdated --show-all --dev-dependencies --dependency-overrides --transitive --no-prereleases
 
+.PHONY: codegen
+codegen: get ## Generate the code
+	@dart run build_runner build --delete-conflicting-outputs
+
+.PHONY: gen
+gen: codegen
+
 .PHONY: test
 test: get ## Run the tests
 	@dart test --debug --coverage=coverage --platform vm,chrome test/l_test.dart
