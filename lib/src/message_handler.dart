@@ -10,8 +10,7 @@ class MessageHandler {
       'from': Map<String, Object?> from,
       'chat': Map<String, Object?> chat,
     }) {
-      final userId = from['id'];
-      final chatId = chat['id'];
+      final userId = from['id'], chatId = chat['id'];
       if (userId is! int || chatId is! int) return;
       l.d('Received message from $userId in chat $chatId');
     }
