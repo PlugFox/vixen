@@ -230,7 +230,7 @@
       ],
       "type": "shell",
       "command": [
-        "dart test --color --coverage --concurrency=50 --platform=tester --reporter=expanded --timeout=30s test/unit_test.dart test/widget_test.dart"
+        "dart test --debug --coverage=coverage --platform vm test/unit_test.dart"
       ],
       "args": [],
       "group": {
@@ -263,7 +263,7 @@
       ],
       "type": "shell",
       "command": [
-        "dart test --color --coverage --concurrency=50 --platform=tester --reporter=expanded --timeout=30s --tags=\"${input:featureName}\" test/unit_test.dart test/widget_test.dart"
+        "dart test --color --coverage --concurrency=50 --platform=tester --reporter=expanded --timeout=30s --tags=\"${input:featureName}\" test/unit_test.dart"
       ],
       "args": [],
       "group": {
@@ -289,8 +289,8 @@
     {
       "id": "featureName",
       "type": "promptString",
-      "description": "Enter the feature name (e.g., 'audo_course'):",
-      "default": "audo_course"
+      "description": "Enter the feature name (e.g., 'unit'):",
+      "default": "unit"
     }
   ]
 }

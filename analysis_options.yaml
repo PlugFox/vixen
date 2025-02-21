@@ -14,7 +14,7 @@ analyzer:
     # Assets
     - "assets/**"
     # Generated
-    - "lib/src/constants/pubspec.yaml.g.dart"
+    - "lib/src/constant/pubspec.yaml.g.dart"
     - "lib/src/model/generated/**"
     - "**.g.dart"
     - "**.gql.dart"

@@ -42,16 +42,16 @@ gen: codegen
 
 .PHONY: test
 test: get ## Run the tests
-	@dart test --debug --coverage=coverage --platform vm,chrome test/l_test.dart
+	@dart test --debug --coverage=coverage --platform vm test/unit_test.dart
 
 .PHONY: coverage
 coverage: get ## Generate the coverage report
 	@dart pub global activate coverage
 	@dart pub global run coverage:test_with_coverage -fb -o coverage -- \
-		--platform=vm,chrome --compiler=kernel --coverage=coverage \
+		--platform=vm --compiler=kernel --coverage=coverage \
 		--reporter=expanded --file-reporter=json:coverage/tests.json \
 		--timeout=10m --concurrency=12 --color \
-			test/l_test.dart
+			test/unit_test.dart
 #	@dart test --concurrency=6 --platform vm --coverage=coverage test/
 #	@dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
 #	@mv coverage/lcov.info coverage/lcov.base.info

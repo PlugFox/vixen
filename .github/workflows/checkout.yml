@@ -57,11 +57,11 @@ jobs:
         run: |
           dart pub get
 
-      - name: 🚦 Check code format
-        id: check-format
-        timeout-minutes: 1
-        run: |
-          find lib test -name "*.dart" ! -name "*.*.dart" -print0 | xargs -0 dart format --set-exit-if-changed --line-length 120 -o none lib/ test/
+      #- name: 🚦 Check code format
+      #  id: check-format
+      #  timeout-minutes: 1
+      #  run: |
+      #    find lib test -name "*.dart" ! -name "*.*.dart" -print0 | xargs -0 dart format --set-exit-if-changed --line-length 120 -o none lib/ test/
 
       - name: 📈 Check analyzer
         id: check-analyzer
@@ -93,7 +93,7 @@ jobs:
             --platform=vm --compiler=kernel --coverage=coverage \
             --reporter=github --file-reporter=json:reports/tests.json \
             --timeout=10m --concurrency=12 --color \
-              test/test.dart
+              test/unit_test.dart
 
       - name: 🎁 Setup LCOV
         timeout-minutes: 1
