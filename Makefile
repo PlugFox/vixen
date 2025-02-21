@@ -22,7 +22,7 @@ help:
 
 .PHONY: format
 format: ## Format the code
-	@dart format -l 80 --fix lib/ test/
+	@dart format -l 120 --fix lib/ test/
 	@dart fix --apply .
 
 .PHONY: get
@@ -62,13 +62,13 @@ coverage: get ## Generate the coverage report
 
 .PHONY: analyze
 analyze: get ## Analyze the code
-	@dart format --set-exit-if-changed -l 80 -o none lib/ test/
+	@dart format --set-exit-if-changed -l 120 -o none lib/ test/
 	@dart analyze --fatal-infos --fatal-warnings lib/ test/
 
 .PHONY: check
 check: analyze publish-check ## Check the code
 	@dart pub global activate pana
-	@pana --json --no-warning --line-length 80 > log.pana.json
+	@pana --json --no-warning --line-length 120 > log.pana.json
 
 .PHONY: pana
 pana: check

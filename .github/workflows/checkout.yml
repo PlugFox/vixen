@@ -61,7 +61,7 @@ jobs:
         id: check-format
         timeout-minutes: 1
         run: |
-          find lib test -name "*.dart" ! -name "*.*.dart" -print0 | xargs -0 dart format --set-exit-if-changed --line-length 80 -o none lib/ test/
+          find lib test -name "*.dart" ! -name "*.*.dart" -print0 | xargs -0 dart format --set-exit-if-changed --line-length 120 -o none lib/ test/
 
       - name: 📈 Check analyzer
         id: check-analyzer
@@ -80,7 +80,7 @@ jobs:
           grep -q "# $version_pubspec" CHANGELOG.md || (echo "Version not found in CHANGELOG.md" >&2; exit 1)
 
       #- name: Check with pana
-      #  run: dart pub global activate pana && pana --json --no-warning --line-length 80
+      #  run: dart pub global activate pana && pana --json --no-warning --line-length 120
 
       #- name: 🌐 Setup chrome
       #  uses: browser-actions/setup-chrome@v1
