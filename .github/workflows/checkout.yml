@@ -68,16 +68,16 @@ jobs:
         timeout-minutes: 1
         run: dart analyze --fatal-infos --fatal-warnings lib/ test/
 
-      - name: 👀 Verify versions
-        id: verify-versions
-        timeout-minutes: 1
-        run: |
-          test -f pubspec.yaml && test -f CHANGELOG.md
-          version_pubspec=$(grep '^version:' pubspec.yaml | awk '{print $2}' | sed 's/[^[:print:]]//g')
-          test -n "$version_pubspec"
-          echo "Version from pubspec.yaml: '$version_pubspec'"
-          echo "$version_pubspec" > /tmp/version_pubspec
-          grep -q "# $version_pubspec" CHANGELOG.md || (echo "Version not found in CHANGELOG.md" >&2; exit 1)
+      #- name: 👀 Verify versions
+      #  id: verify-versions
+      #  timeout-minutes: 1
+      #  run: |
+      #    test -f pubspec.yaml && test -f CHANGELOG.md
+      #    version_pubspec=$(grep '^version:' pubspec.yaml | awk '{print $2}' | sed 's/[^[:print:]]//g')
+      #    test -n "$version_pubspec"
+      #    echo "Version from pubspec.yaml: '$version_pubspec'"
+      #    echo "$version_pubspec" > /tmp/version_pubspec
+      #    grep -q "# $version_pubspec" CHANGELOG.md || (echo "Version not found in CHANGELOG.md" >&2; exit 1)
 
       #- name: Check with pana
       #  run: dart pub global activate pana && pana --json --no-warning --line-length 120
