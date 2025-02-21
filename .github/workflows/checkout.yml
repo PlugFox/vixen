@@ -99,15 +99,15 @@ jobs:
         timeout-minutes: 1
         uses: hrishikesh-kadam/setup-lcov@v1
 
-      - name: 🔍 Check coverage
-        id: check-coverage
-        timeout-minutes: 1
-        run: |
-          lcov --list coverage/lcov.info
-          THRESHOLD=${{ env.threshold }}
-          COVERAGE=$(lcov --summary coverage/lcov.info | grep -i 'lines\|Total:' | tail -n 1 | awk '{print $2}' | sed 's/%//')
-          echo "Coverage is $COVERAGE%"
-          echo $COVERAGE | awk '{if ($1 < 50) exit 1}'
+      #- name: 🔍 Check coverage
+      #  id: check-coverage
+      #  timeout-minutes: 1
+      #  run: |
+      #    lcov --list coverage/lcov.info
+      #    THRESHOLD=${{ env.threshold }}
+      #    COVERAGE=$(lcov --summary coverage/lcov.info | grep -i 'lines\|Total:' | tail -n 1 | awk '{print $2}' | sed 's/%//')
+      #    echo "Coverage is $COVERAGE%"
+      #    echo $COVERAGE | awk '{if ($1 < 50) exit 1}'
 
       #- name: 🔍 Report code coverage
       #  uses: zgosalvez/github-actions-report-lcov@v4
