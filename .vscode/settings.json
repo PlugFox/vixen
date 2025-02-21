@@ -1,0 +1,77 @@
+{
+  "dart.lineLength": 120,
+  "editor.rulers": [
+    120
+  ],
+  "[dart]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off",
+    "editor.selectionHighlight": false,
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    },
+    "editor.links": true
+  },
+  "dart.doNotFormat": [
+    "**.g.dart",
+    "**.gql.dart",
+    "**.freezed.dart",
+    "**.config.dart",
+    "**.mocks.dart",
+    "**.gen.dart",
+    "**.pb.dart",
+    "**.pbenum.dart",
+    "**.pbjson.dart",
+    "**/generated/**"
+  ],
+  "dart.additionalAnalyzerFileExtensions": [
+    "drift"
+  ],
+  // Flutter Version Manager
+  //"dart.flutterSdkPath": ".fvm/flutter_sdk",
+  // Remove .fvm files from search
+  "search.exclude": {
+    "**/.fvm": true,
+    ".dart_tool": true,
+    "coverage": true,
+    "build": true
+  },
+  // Remove from file watching
+  "files.watcherExclude": {
+    "**/.fvm": true,
+    ".dart_tool": true,
+    "coverage": true,
+    "build": true
+  },
+  // Causes the debug view to automatically appear when a breakpoint is hit. This
+  // setting is global and not configurable per-language.
+  "debug.openDebug": "openOnDebugBreak",
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "pubspec.yaml": ".flutter-plugins, .packages, .dart_tool, .flutter-plugins-dependencies, .metadata, .packages, pubspec.lock, build.yaml, analysis_options.yaml, all_lint_rules.yaml, dart*.yaml, flutter*.yaml, icons_launcher.yaml, l10n.yaml, melos.yaml, pubspec_overrides.yaml, devtools_options.yaml",
+    ".gitignore": ".gitattributes, .gitmodules, .gitmessage, .mailmap, .git-blame*",
+    "readme.*": "authors, backers.md, changelog*, citation*, code_of_conduct.md, codeowners, contributing.md, contributing_*.md, contributors, copying, credits, governance.md, history.md, license*, maintainers, readme*, security.md, sponsors.md, how_to.md, howto.md",
+    "*.dart": "i_$(capture).dart, $(capture).g.dart, $(capture).gr.dart, $(capture).freezed.dart, $(capture).config.dart, $(capture).chopper.dart, $(capture).drift, $(capture)_io.dart, $(capture)_web.dart, $(capture)_shared.dart, $(capture)_stub.dart",
+    "*.graphql": "$(capture).gql.dart, $(capture).*.gql.dart",
+    "firebase.json": " .firebaserc",
+    "main.dart": "runner_io.dart, runner_shared.dart, runner_stub.dart, runner_web.dart, runner_vm.dart, runner_js.dart, runner_wasm.dart, runner_mobile.dart, runner_desktop.dart"
+  },
+  "files.associations": {
+    "*.drift": "sql"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run (debug)",
+      "type": "dart",
+      "program": "bin/main.dart",
+      "request": "launch",
+      "flutterMode": "debug",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "env": {
+        "CONFIG_VERBOSE": "debug",
+      }
+    },
+    // https://pub.dev/packages/test
+    {
+      "name": "Test (VM)",
+      "request": "launch",
+      "type": "dart",
+      "program": "test/l_test.dart",
+      "env": {
+        "ENVIRONMENT": "test"
+      },
+      "console": "debugConsole",
+      "runTestsOnDevice": false,
+      "templateFor": "test",
+      "toolArgs": [
+        "--color",
+        "--debug",
+        "--coverage=.coverage",
+        "--reporter=expanded",
+        "--platform=vm", // chrome
+        "--file-reporter=json:.coverage/tests.json",
+        "--timeout=30s",
+        "--concurrency=12"
+      ],
+      "args": []
+    }
+  ]
+}
