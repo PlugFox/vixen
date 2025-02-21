@@ -8,14 +8,14 @@ import 'package:l/l.dart' as logger;
 ArgParser _buildParser() =>
     ArgParser()
       ..addFlag('help', abbr: 'h', negatable: false, help: 'Print this usage information')
-      ..addSeparator('')
+      /* ..addSeparator('') */
       ..addOption(
         'token',
         abbr: 't',
         aliases: ['bot', 'telegram'],
         mandatory: true,
         help: 'Telegram bot token',
-        valueHelp: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+        valueHelp: '123:ABC-DEF',
       )
       ..addOption(
         'secret',
@@ -25,7 +25,16 @@ ArgParser _buildParser() =>
         help: 'Secret admin API key',
         valueHelp: '1234567890',
       )
-      ..addSeparator('')
+      /* ..addSeparator('') */
+      ..addOption(
+        'database',
+        abbr: 'p',
+        aliases: ['db', 'sqlite', 'sql', 'file', 'path'],
+        mandatory: false,
+        help: 'Path to the SQLite database file',
+        defaultsTo: 'data/db.sqlite3',
+        valueHelp: 'data/db.sqlite3',
+      )
       ..addOption(
         'verbose',
         abbr: 'v',
@@ -44,7 +53,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'secret', 'verbose'};
+      const options = <String>{'token', 'secret', 'verbose', 'database'};
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //

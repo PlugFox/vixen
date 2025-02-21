@@ -92,7 +92,8 @@ class Database extends _$Database
       }
     }
 
-    if (memoryDatabase || path?.trim().toLowerCase() == ':memory:') {
+    path = path?.trim().toLowerCase();
+    if (memoryDatabase || path == ':memory:') {
       return ffi.NativeDatabase.memory(
         logStatements: logStatements,
         /* setup: (db) {}, */
