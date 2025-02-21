@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS log_tbl (
 CREATE INDEX IF NOT EXISTS log_time_idx ON log_tbl (time);
 CREATE INDEX IF NOT EXISTS log_level_idx ON log_tbl (level);
 
+/*
 -- Search table
 CREATE TABLE IF NOT EXISTS log_prefix_tbl (
     -- req Prefix (first 3 chars of word, lowercased)
@@ -48,3 +49,4 @@ CREATE TABLE IF NOT EXISTS log_prefix_tbl (
 CREATE INDEX IF NOT EXISTS log_prefix_prefix_idx ON log_prefix_tbl (prefix);
 CREATE INDEX IF NOT EXISTS log_prefix_log_id_idx ON log_prefix_tbl (log_id);
 CREATE INDEX IF NOT EXISTS log_prefix_len_idx ON log_prefix_tbl (len);
+ */
