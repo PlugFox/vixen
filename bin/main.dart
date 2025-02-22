@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:developer';
+import 'dart:io' as io;
 
 import 'package:intl/intl.dart';
 import 'package:l/l.dart';
@@ -27,6 +28,12 @@ void main(List<String> args) {
   l.listen(logsBuffer.add, cancelOnError: false);
 
   final arguments = Arguments.parse(args);
+
+  if (arguments.chats.isEmpty) {
+    io.stderr.writeln('No chat IDs provided');
+    io.exit(2);
+  }
+
   l.capture(
     () => runZonedGuarded<void>(
       () async {
@@ -38,7 +45,7 @@ void main(List<String> args) {
         final lastUpdateId = db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
         bot
-          ..addHandler(handler(bot: bot, db: db))
+          ..addHandler(handler(arguments: arguments, bot: bot, db: db))
           ..start();
 
         // TODO(plugfox): Server, Healthchecks, Captcha queue, Admin commands, Metrics, Tests
@@ -95,11 +102,12 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
 
 /// Returns a handler that processes updates and saves the offset to the database.
 void Function(int updateId, Map<String, Object?> update) handler({
+  required Arguments arguments,
   required Bot bot,
   required Database db,
   Duration interval = const Duration(seconds: 5),
 }) {
-  final messageHandler = MessageHandler();
+  final messageHandler = MessageHandler(chats: arguments.chats, db: db, bot: bot);
 
   var lastOffset = 0;
 

@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS kv_tbl (
 CREATE INDEX IF NOT EXISTS kv_meta_created_at_idx ON kv_tbl (meta_created_at);
 CREATE INDEX IF NOT EXISTS kv_meta_updated_at_idx ON kv_tbl (meta_updated_at);
 
+-- Triggers
 CREATE TRIGGER IF NOT EXISTS kv_meta_updated_at_trig AFTER UPDATE ON kv_tbl
     BEGIN
         UPDATE kv_tbl SET meta_updated_at = strftime('%s', 'now') WHERE k = NEW.k;

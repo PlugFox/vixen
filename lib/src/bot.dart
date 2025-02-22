@@ -8,6 +8,8 @@ import 'package:l/l.dart';
 final Converter<List<int>, Map<String, Object?>> _jsonDecoder =
     utf8.decoder.fuse(json.decoder).cast<List<int>, Map<String, Object?>>();
 
+final Converter<Object?, List<int>> _jsonEncoder = json.encoder.fuse(utf8.encoder);
+
 typedef OnUpdateHandler = void Function(int id, Map<String, Object?> update);
 
 class Bot {
@@ -86,7 +88,7 @@ class Bot {
     final url = _buildMethodUri('deleteMessage');
     final response = await _client.post(
       url,
-      body: json.encode({'chat_id': chatId, 'message_id': messageId}),
+      body: _jsonEncoder.convert({'chat_id': chatId, 'message_id': messageId}),
       headers: {'Content-Type': 'application/json'},
     );
     if (response.statusCode != 200) throw Exception('Failed to delete message: status code ${response.statusCode}');
@@ -101,7 +103,7 @@ class Bot {
     for (var i = 0; i < toDelete.length; i += 100) {
       final response = await _client.post(
         url,
-        body: json.encode({'chat_id': chatId, 'message_ids': toDelete.sublist(i, i + 100)}),
+        body: _jsonEncoder.convert({'chat_id': chatId, 'message_ids': toDelete.sublist(i, i + 100)}),
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode != 200) throw Exception('Failed to delete messages: status code ${response.statusCode}');

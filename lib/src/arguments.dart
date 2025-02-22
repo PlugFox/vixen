@@ -18,6 +18,14 @@ ArgParser _buildParser() =>
         valueHelp: '123:ABC-DEF',
       )
       ..addOption(
+        'chats',
+        abbr: 'c',
+        aliases: ['groups', 'chat', 'chat_ids'],
+        mandatory: true,
+        help: 'Comma-separated list of chat IDs',
+        valueHelp: '123,-456,-789',
+      )
+      ..addOption(
         'secret',
         abbr: 's',
         aliases: ['admin', 'api'],
@@ -53,7 +61,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'secret', 'verbose', 'database'};
+      const options = <String>{'token', 'chats', 'secret', 'verbose', 'database'};
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //
@@ -105,6 +113,9 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           _ => const logger.LogLevel.warning(),
         },
         token: table['token'] ?? '',
+        chats: HashSet<int>.from(
+          table['chats']?.split(',').map((e) => int.tryParse(e.trim())) ?? const Iterable.empty(),
+        ),
         secret: table['secret'] ?? '',
       );
     } on FormatException {
@@ -128,6 +139,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   Arguments._({
     required this.verbose,
+    required this.chats,
     required this.token,
     required this.secret,
     required Map<String, String> arguments,
@@ -138,6 +150,9 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// Telegram bot token
   final String token;
+
+  /// List of chat IDs
+  final Set<int> chats;
 
   /// Secret admin API key
   final String secret;

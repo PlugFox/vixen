@@ -39,7 +39,13 @@ abstract interface class IKeyValueStorage {
 }
 
 @DriftDatabase(
-  include: <String>{'ddl/kv.drift', 'ddl/characteristic.drift', 'ddl/log.drift', 'ddl/settings.drift'},
+  include: <String>{
+    'ddl/kv.drift',
+    'ddl/characteristic.drift',
+    'ddl/log.drift',
+    'ddl/settings.drift',
+    'ddl/user.drift', // Verified, Banned
+  },
   tables: <Type>[],
   daos: <Type>[],
   queries: $queries,

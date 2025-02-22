@@ -1,0 +1,23 @@
+-- Verfied users
+CREATE TABLE IF NOT EXISTS verified (
+    -- User ID
+    user_id INTEGER NOT NULL PRIMARY KEY,
+
+    -- Date of verification
+    verified_at INTEGER NOT NULL,
+
+    -- Reason for verification
+    reason TEXT
+) STRICT;
+
+-- Banned users
+CREATE TABLE IF NOT EXISTS banned (
+    -- User ID
+    user_id INTEGER NOT NULL PRIMARY KEY,
+
+    -- Date of ban
+    banned_at INTEGER NOT NULL,
+
+    -- Reason for ban
+    reason TEXT
+) STRICT;
