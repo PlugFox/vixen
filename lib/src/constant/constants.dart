@@ -62,3 +62,6 @@ const bool kDebugMode = !kReleaseMode && !kProfileMode;
 /// precision loss in calculations. Differences below this threshold are safe to
 /// disregard.
 const double precisionErrorTolerance = 1e-10;
+
+/// The key used to store the last update id in the database.
+const String updateIdKey = 'update_id';

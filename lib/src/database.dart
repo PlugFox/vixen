@@ -6,7 +6,7 @@ import 'package:drift/native.dart' as ffi;
 import 'package:l/l.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:vixen/src/constants.dart';
+import 'package:vixen/src/constant/constants.dart';
 import 'package:vixen/src/queries.dart';
 
 export 'package:drift/drift.dart' hide DatabaseOpener;

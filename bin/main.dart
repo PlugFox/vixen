@@ -6,8 +6,22 @@ import 'package:intl/intl.dart';
 import 'package:l/l.dart';
 import 'package:vixen/vixen.dart';
 
-const String updateIdKey = 'update_id';
-
+/// The main entry point of the bot.
+/// Initializes the database, starts the bot, and collects logs.
+///
+/// The bot token is required to start the bot.
+/// The token can be obtained from the BotFather on Telegram.
+///
+/// How to run:
+/// ```shell
+/// dart bin/main.dart --token <bot_token>
+/// ```
+///
+/// How to compile:
+/// ```shell
+/// dart compile exe bin/main.dart -o bin/main.run
+/// bin/main.run --token <bot_token>
+/// ```
 void main(List<String> args) {
   final logsBuffer = Queue<LogMessage>();
   l.listen(logsBuffer.add, cancelOnError: false);
