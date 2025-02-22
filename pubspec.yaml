@@ -61,6 +61,9 @@ dependencies:
   convert: ^3.1.2
   intl: ^0.20.2
 
+  # Image
+  image: ^4.5.3
+
   # Logger
   l: ^5.0.0
 
