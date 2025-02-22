@@ -1,8 +1,5 @@
 import 'package:l/l.dart';
 
-// TODO(plugfox): Database, Captcha queue, Admin commands, Metrics, Tests
-// Mike Matiunin <plugfox@gmail.com>, 22 February 2025
-
 /*
 {
     "ok": true,

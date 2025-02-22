@@ -23,6 +23,9 @@ void main(List<String> args) {
         l.i('Starting bot');
         final lastUpdateId = db.getKey<int>(updateIdKey);
         Bot(token: arguments.token, offset: lastUpdateId, onUpdate: handler(db)).start();
+
+        // TODO(plugfox): Server, Healthchecks, Captcha queue, Admin commands, Metrics, Tests
+        // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
       },
       (error, stackTrace) {
         l.e('An top level error occurred. $error', stackTrace);
