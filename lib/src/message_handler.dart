@@ -3,6 +3,8 @@ import 'dart:collection';
 
 import 'package:l/l.dart';
 import 'package:vixen/src/bot.dart';
+import 'package:vixen/src/captcha.dart';
+import 'package:vixen/src/constant/constants.dart';
 import 'package:vixen/src/database.dart';
 
 /*
@@ -16,7 +18,7 @@ import 'package:vixen/src/database.dart';
                 "from": {
                     "id": 123,
                     "is_bot": false,
-                    "first_name": "Username,
+                    "first_name": "Username",
                     "username": "Username"
                 },
                 "chat": {
@@ -42,14 +44,16 @@ import 'package:vixen/src/database.dart';
 */
 
 class MessageHandler {
-  MessageHandler({required Set<int> chats, required Database db, required Bot bot})
+  MessageHandler({required Set<int> chats, required Database db, required Bot bot, required CaptchaQueue captchaQueue})
     : _chats = chats,
       _db = db,
-      _bot = bot;
+      _bot = bot,
+      _captchaQueue = captchaQueue;
 
   final Set<int> _chats;
   final Database _db;
   final Bot _bot;
+  final CaptchaQueue _captchaQueue;
 
   // --- Delete messages --- //
 
@@ -78,9 +82,9 @@ class MessageHandler {
   void _scheduleDeleteMessage(int chatId, int messageId) {
     _toDelete.putIfAbsent(chatId, () => <int>[]).add(messageId);
     if (_toDeleteScheduled) return;
+    // Delay to allow for more messages to be added to the list and batch delete them
     _toDeleteScheduled = true;
-    // Delay to allow for more messages to be added to the list
-    Future<void>.delayed(const Duration(seconds: 1), _deleteMessages);
+    Timer(const Duration(milliseconds: 250), _deleteMessages);
   }
 
   // --- Verified user --- //
@@ -115,7 +119,7 @@ class MessageHandler {
   // --- Handle message --- //
 
   /// Handle a message.
-  Future<void> call(Map<String, Object?> message) async {
+  void call(Map<String, Object?> message) {
     if (message case <String, Object?>{
       'message_id': int messageId,
       'date': int _, // date
@@ -126,8 +130,64 @@ class MessageHandler {
       if (userId is! int || chatId is! int) return;
       if (!_chats.contains(chatId)) return;
       l.d('Received message from $userId in chat $chatId');
-      if (await _isVerified(userId)) return;
-      _scheduleDeleteMessage(chatId, messageId);
+      Future<void>(() async {
+        if (await _isVerified(userId)) return;
+        _scheduleDeleteMessage(chatId, messageId);
+        // Check, maybe the user is already has a captcha
+        {
+          final captcha =
+              await (_db.select(_db.captchaMessage)
+                    ..where((tbl) => tbl.userId.equals(userId) & tbl.chatId.equals(chatId))
+                    ..limit(1))
+                  .getSingleOrNull();
+          // User already has a captcha
+          if (captcha != null) return;
+        }
+
+        final captcha = await _captchaQueue.next();
+        final username = from['username']?.toString();
+        final name = '${from['first_name'] ?? ''} ${from['last_name'] ?? ''}'.trim();
+        final String caption;
+        {
+          // Generate the caption for the message
+          final captionBuffer = StringBuffer();
+          if (name.isNotEmpty) {
+            captionBuffer.writeln('👋 Hello, **[$name](tg://user?id=$userId)**\\!');
+          } else if (username?.isNotEmpty == true) {
+            captionBuffer.writeln('👋 Hello, **@$username**\\!');
+          }
+          captionBuffer.writeln('Please solve the following captcha:');
+          //captionBuffer.writeln(captcha.text);
+          caption = captionBuffer.toString();
+        }
+        final msgId = await _bot.sendPhoto(
+          chatId: chatId,
+          bytes: captcha.image,
+          filename: 'captcha.png',
+          caption: caption,
+          notification: true,
+          reply: defaultCaptchaKeyboard,
+        );
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        _db
+            .into(_db.captchaMessage)
+            .insert(
+              CaptchaMessageCompanion.insert(
+                messageId: Value<int>(msgId),
+                userId: userId,
+                chatId: chatId,
+                caption: caption,
+                solution: captcha.text,
+                input: '',
+                createdAt: now,
+                updatedAt: now,
+                expiresAt: now + captchaLifetime,
+              ),
+              mode: InsertMode.insertOrReplace,
+            )
+            .ignore();
+        l.d('Sent captcha to $userId in chat $chatId');
+      }).ignore();
     }
   }
 }

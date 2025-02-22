@@ -45,6 +45,7 @@ abstract interface class IKeyValueStorage {
     'ddl/log.drift',
     'ddl/settings.drift',
     'ddl/user.drift', // Verified, Banned
+    'ddl/captcha.drift', // Captcha messages
   },
   tables: <Type>[],
   daos: <Type>[],

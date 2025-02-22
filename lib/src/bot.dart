@@ -83,6 +83,108 @@ class Bot {
     }
   }
 
+  /// Send a message to a chat.
+  Future<int> sendMessage(int chatId, String text) async {
+    final url = _buildMethodUri('sendMessage');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert({'chat_id': chatId, 'text': text}),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Failed to send message: status code ${response.statusCode}');
+    final result = _jsonDecoder.convert(response.bodyBytes);
+    if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
+      return messageId;
+    } else {
+      throw Exception('Failed to send message: $result');
+    }
+  }
+
+  /// Send a photo to a chat.
+  Future<int> sendPhoto({
+    required int chatId,
+    required List<int> bytes,
+    required String filename,
+    String? caption,
+    bool notification = true,
+    String? reply,
+  }) async {
+    final url = _buildMethodUri('sendPhoto');
+
+    var request = http.MultipartRequest('POST', url);
+    request.fields
+      ..['chat_id'] = chatId.toString()
+      ..['parse_mode'] = 'MarkdownV2'
+      ..['protect_content'] = 'true'
+      ..['disable_notification'] = notification ? 'false' : 'true';
+    if (caption != null)
+      request.fields
+        ..['caption'] = caption
+        ..['show_caption_above_media'] = 'true';
+    if (reply != null) request.fields['reply_markup'] = reply;
+    request.files.add(http.MultipartFile.fromBytes('photo', bytes, filename: filename));
+    final response = await request.send();
+    final responseBody = await response.stream.toBytes();
+    final result = _jsonDecoder.convert(responseBody);
+    if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
+      return messageId;
+    } else {
+      throw Exception('Failed to send message: $result');
+    }
+  }
+
+  /// Edit a message in a chat.
+  Future<void> editMessageMedia({
+    required int chatId,
+    required int messageId,
+    required List<int> bytes,
+    required String filename,
+    String? caption,
+    String? reply,
+  }) async {
+    final url = _buildMethodUri('editMessageMedia');
+
+    var request = http.MultipartRequest('POST', url);
+    request.fields
+      ..['chat_id'] = chatId.toString()
+      ..['message_id'] = messageId.toString()
+      ..['media'] = jsonEncode(<String, Object?>{
+        'type': 'photo',
+        'media': 'attach://media',
+        if (caption != null) ...<String, Object?>{
+          'parse_mode': 'MarkdownV2',
+          'caption': caption,
+          'show_caption_above_media': true,
+        },
+      });
+    if (reply != null) request.fields['reply_markup'] = reply;
+    request.files.add(http.MultipartFile.fromBytes('media', bytes, filename: filename));
+    final response = await request.send();
+    final responseBody = await response.stream.toBytes();
+    final result = _jsonDecoder.convert(responseBody);
+    if (result case <String, Object?>{'ok': true}) {
+      return;
+    } else {
+      throw Exception('Failed to send message: $result');
+    }
+  }
+
+  /// Answer a callback query.
+  Future<void> answerCallbackQuery(String callbackQueryId, String text, {bool arlert = false}) async {
+    final url = _buildMethodUri('answerCallbackQuery');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert({
+        'callback_query_id': callbackQueryId,
+        if (text.isNotEmpty) 'text': text,
+        if (arlert) 'show_alert': arlert,
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200)
+      throw Exception('Failed to answer callback query: status code ${response.statusCode}');
+  }
+
   /// Delete a message from a chat.
   Future<void> deleteMessage(int chatId, int messageId) async {
     final url = _buildMethodUri('deleteMessage');
@@ -100,10 +202,11 @@ class Bot {
     if (messageIds.length == 1) return deleteMessage(chatId, messageIds.single);
     final url = _buildMethodUri('deleteMessages');
     final toDelete = messageIds.toList(growable: false);
-    for (var i = 0; i < toDelete.length; i += 100) {
+    final length = toDelete.length;
+    for (var i = 0; i < length; i += 100) {
       final response = await _client.post(
         url,
-        body: _jsonEncoder.convert({'chat_id': chatId, 'message_ids': toDelete.sublist(i, i + 100)}),
+        body: _jsonEncoder.convert({'chat_id': chatId, 'message_ids': toDelete.sublist(i, math.min(i + 100, length))}),
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode != 200) throw Exception('Failed to delete messages: status code ${response.statusCode}');
@@ -134,7 +237,7 @@ class Bot {
             if (poller.isCompleted) return;
             _handleUpdates(updates);
             // Throttle the polling to avoid hitting the rate limit
-            if (throttleStopwatch.elapsed < const Duration(seconds: 1)) {
+            if (throttleStopwatch.elapsed < const Duration(milliseconds: 250)) {
               l.d('Throttling polling');
               await Future<void>.delayed(const Duration(seconds: 1) - throttleStopwatch.elapsed);
             }

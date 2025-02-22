@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:collection';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
+import 'package:l/l.dart';
 import 'package:meta/meta.dart';
 
 /// Captcha class.
@@ -36,6 +40,7 @@ class Captcha {
 
 typedef CaptchaColor = ({int red, int green, int blue});
 
+/// Captcha generator class.
 class CaptchaGenerator {
   CaptchaGenerator({String fontPath = 'assets/font.webp'})
     : _font = img.decodeWebPFile(fontPath).then((image) => image!);
@@ -181,5 +186,141 @@ class CaptchaGenerator {
     final bytes = Uint8List.fromList(img.encodePng(resized));
 
     return Captcha(numbers: numbers, text: text, image: bytes, width: width, height: height);
+  }
+}
+
+final class _CaptchaRequest {
+  _CaptchaRequest({required this.width, required this.height, required this.length});
+
+  final int width; // 480
+  final int height; // 180
+  final int length; // 6
+}
+
+void _captchaGeneratorIsolate(SendPort sendPort) => l.capture(
+  () => runZonedGuarded<void>(
+    () async {
+      final generator = CaptchaGenerator();
+      final receivePort = ReceivePort();
+      sendPort.send(receivePort.sendPort);
+      receivePort.listen((message) {
+        switch (message) {
+          case _CaptchaRequest request:
+            generator
+                .generate(width: request.width, height: request.height, length: request.length)
+                .then(sendPort.send);
+          default:
+            l.w('Unknown message in captcha generator isolate: $message');
+        }
+      }, cancelOnError: false);
+    },
+    (e, s) {
+      l.e('Caught an error in the captcha generator isolate: $e', s);
+    },
+  ),
+  LogOptions(
+    handlePrint: true,
+    printColors: false,
+    outputInRelease: true,
+    overrideOutput: (log) {
+      sendPort.send(log);
+      return null;
+    },
+  ),
+);
+
+class CaptchaQueue {
+  CaptchaQueue({int size = 6, int width = 480, int height = 180, int length = 6})
+    : _size = size.clamp(1, 64),
+      _width = width,
+      _height = height,
+      _length = length;
+
+  final int _width; // 480
+  final int _height; // 180
+  final int _length; // 6
+
+  final int _size;
+
+  final Queue<Captcha> _queue = Queue<Captcha>();
+  final Queue<Completer<Captcha>> _completers = Queue<Completer<Captcha>>();
+
+  SendPort? _sendPort;
+  Isolate? _isolate;
+
+  @pragma('vm:prefer-inline')
+  void _maybeRequest() {
+    if (_completers.isEmpty && _queue.length >= _size) return;
+    final port = _sendPort;
+    if (port == null) return;
+    port.send(_CaptchaRequest(width: _width, height: _height, length: _length));
+  }
+
+  @pragma('vm:prefer-inline')
+  void _addToQueue(Captcha captcha) {
+    try {
+      if (_completers.isNotEmpty) {
+        final completer = _completers.removeFirst();
+        if (completer.isCompleted) {
+          l.w('Completer is already completed', StackTrace.current);
+        } else {
+          completer.complete(captcha); // Complete the future
+        }
+      } else {
+        _queue.add(captcha); // Store for later
+      }
+    } on Object catch (e, s) {
+      l.e('Failed to add captcha to the queue: $e', s);
+    } finally {
+      _maybeRequest();
+    }
+  }
+
+  /// Stop the captcha generator.
+  void stop() {
+    _isolate?.kill(priority: Isolate.immediate);
+    _sendPort = null;
+  }
+
+  /// Start the captcha generator.
+  Future<void> start() async {
+    stop();
+    final completer = Completer<SendPort>();
+    final receivePort =
+        ReceivePort()..listen((message) {
+          switch (message) {
+            case Captcha c:
+              _addToQueue(c);
+            case LogMessage log:
+              l.log(log);
+            case SendPort sendPort:
+              completer.complete(sendPort);
+            default:
+              l.w('Unknown message captcha isolate message: $message');
+          }
+        }, cancelOnError: false);
+    _isolate = await Isolate.spawn(
+      _captchaGeneratorIsolate,
+      receivePort.sendPort,
+      errorsAreFatal: false,
+      debugName: 'CaptchaGenerator',
+    );
+    _sendPort = await completer.future;
+    _maybeRequest();
+  }
+
+  /// Get the next captcha.
+  Future<Captcha> next() async {
+    Captcha captcha;
+    if (_queue.isEmpty) {
+      final completer = Completer<Captcha>();
+      _completers.add(completer);
+      _maybeRequest();
+      captcha = await completer.future;
+    } else {
+      captcha = _queue.removeFirst();
+      _maybeRequest();
+    }
+    return captcha;
   }
 }

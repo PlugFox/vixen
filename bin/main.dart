@@ -5,6 +5,7 @@ import 'dart:io' as io;
 
 import 'package:intl/intl.dart';
 import 'package:l/l.dart';
+import 'package:vixen/src/callback_handler.dart';
 import 'package:vixen/vixen.dart';
 
 /// The main entry point of the bot.
@@ -41,11 +42,16 @@ void main(List<String> args) {
         final db = Database.lazy(); // Open the database
         collectLogs(db, logsBuffer); // Store logs in the database every 5 seconds
         await db.refresh();
-        l.i('Starting bot');
+
+        l.i('Starting the captcha queue');
+        final captchaQueue = CaptchaQueue(size: 24, length: 4, width: 480, height: 180);
+        await captchaQueue.start();
+
+        l.i('Running the bot');
         final lastUpdateId = db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
         bot
-          ..addHandler(handler(arguments: arguments, bot: bot, db: db))
+          ..addHandler(handler(arguments: arguments, bot: bot, db: db, captchaQueue: captchaQueue))
           ..start();
 
         // TODO(plugfox): Server, Healthchecks, Captcha queue, Admin commands, Metrics, Tests
@@ -59,7 +65,7 @@ void main(List<String> args) {
     LogOptions(
       handlePrint: true,
       outputInRelease: true,
-      printColors: true,
+      printColors: false,
       overrideOutput: (event) {
         //logsBuffer.add(event);
         if (event.level.level > arguments.verbose.level) return null;
@@ -105,9 +111,11 @@ void Function(int updateId, Map<String, Object?> update) handler({
   required Arguments arguments,
   required Bot bot,
   required Database db,
+  required CaptchaQueue captchaQueue,
   Duration interval = const Duration(seconds: 5),
 }) {
-  final messageHandler = MessageHandler(chats: arguments.chats, db: db, bot: bot);
+  final messageHandler = MessageHandler(chats: arguments.chats, db: db, bot: bot, captchaQueue: captchaQueue);
+  final callbackHandler = CallbackHandler(chats: arguments.chats, db: db, bot: bot, captchaQueue: captchaQueue);
 
   var lastOffset = 0;
 
@@ -118,11 +126,28 @@ void Function(int updateId, Map<String, Object?> update) handler({
     l.d('Updated offset to $lastOffset');
   });
 
+  // Periodically remove outdated captcha messages
+  Timer.periodic(const Duration(seconds: captchaLifetime ~/ 2), (_) async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final deleted =
+        await (db.delete(db.captchaMessage)..where((tbl) => tbl.expiresAt.isSmallerThanValue(now))).goAndReturn();
+    if (deleted.isEmpty) return;
+    for (final captcha in deleted) bot.deleteMessage(captcha.chatId, captcha.messageId).ignore();
+    l.d('Deleted ${deleted.length} outdated captcha messages');
+  });
+
   return (updateId, update) {
     lastOffset = updateId;
     l.d('Received update: $update');
     if (update['message'] case Map<String, Object?> message) {
       messageHandler(message);
+    } else if (update['callback_query'] case Map<String, Object?> callback) {
+      callbackHandler(callback);
+    } else {
+      if (kDebugMode) {
+        l.d('Unknown update type: $update');
+        debugger(); // Set a breakpoint here
+      }
     }
   };
 }
