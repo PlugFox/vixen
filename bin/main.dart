@@ -145,7 +145,7 @@ void Function(int updateId, Map<String, Object?> update) handler({
   Timer.periodic(interval, (_) async {
     if (lastOffset <= (db.getKey<int>(updateIdKey) ?? 0)) return;
     db.setKey(updateIdKey, lastOffset);
-    l.d('Updated offset to $lastOffset');
+    l.d('Save updates offset `$lastOffset`');
   });
 
   // Periodically remove outdated captcha messages

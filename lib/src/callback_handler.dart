@@ -113,8 +113,21 @@ class CallbackHandler {
             _bot.answerCallbackQuery(callbackQueryId, 'Correct!').ignore();
             _bot.deleteMessage(chatId, messageId).ignore();
             (_db.delete(_db.captchaMessage)..whereSamePrimaryKey(captcha)).go().ignore();
-            // TODO(plugfox): Verify the user
-            // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
+            final username = from['username']?.toString() ?? '';
+            final name = '${from['first_name'] ?? ''} ${from['last_name'] ?? ''}';
+            _db
+                .verifyUser(
+                  chatId: chatId,
+                  userId: userId,
+                  name: switch ((name.trim(), username.trim())) {
+                    ('', '') => 'unknown',
+                    ('', String username) => '@$username',
+                    (String name, '') => name,
+                    (String name, String username) => '$name (@$username)',
+                  },
+                  reason: 'captcha_solved',
+                )
+                .ignore();
             return;
           } else {
             final currentInputText =
