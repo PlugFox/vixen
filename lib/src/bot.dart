@@ -63,17 +63,17 @@ class Bot {
   Future<List<Map<String, Object?>>> _getUpdates(Uri url) async {
     final response = await _client.get(url);
     if (response.statusCode != 200) {
-      l.w('Failed to fetch updates: status code', StackTrace.current, {'status': response.statusCode});
+      l.w('Failed to fetch updates: status code ${response.statusCode}', StackTrace.current);
       return const [];
     }
     final update = _jsonDecoder.convert(response.bodyBytes);
     if (update['ok'] != true) {
-      l.w('Failed to fetch updates: not ok', StackTrace.current, {'update': update});
+      l.w('Failed to fetch updates: not ok', StackTrace.current, update);
       return const [];
     }
     final result = update['result'];
     if (result is! List) {
-      l.w('Failed to fetch updates: wrong result type', StackTrace.current, {'result': result});
+      l.w('Failed to fetch updates: wrong result type', StackTrace.current, update);
       return const [];
     }
     return result.whereType<Map<String, Object?>>().where((u) => u['update_id'] is int).toList(growable: false);
@@ -110,7 +110,8 @@ class Bot {
     if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
       return messageId;
     } else {
-      throw Exception('Failed to send message: $result');
+      l.w('Failed to send message', StackTrace.current, result);
+      throw Exception('Failed to send message');
     }
   }
 
@@ -143,6 +144,7 @@ class Bot {
     if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
       return messageId;
     } else {
+      l.w('Failed to send message', StackTrace.current, result);
       throw Exception('Failed to send message: $result');
     }
   }
@@ -164,7 +166,9 @@ class Bot {
       }),
       headers: {'Content-Type': 'application/json'},
     );
-    if (response.statusCode != 200) throw Exception('Failed to edit photo caption: status code ${response.statusCode}');
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to edit photo caption: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to edit photo caption: status code ${response.statusCode}');
   }
 
   /// Edit a message in a chat.
@@ -194,13 +198,9 @@ class Bot {
     if (reply != null) request.fields['reply_markup'] = reply;
     request.files.add(http.MultipartFile.fromBytes('media', bytes, filename: filename));
     final response = await request.send();
-    final responseBody = await response.stream.toBytes();
-    final result = _jsonDecoder.convert(responseBody);
-    if (result case <String, Object?>{'ok': true}) {
-      return;
-    } else {
-      throw Exception('Failed to send message: $result');
-    }
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to edit message media: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to edit message media: status code ${response.statusCode}');
   }
 
   /// Answer a callback query.
@@ -215,8 +215,9 @@ class Bot {
       }),
       headers: {'Content-Type': 'application/json'},
     );
-    if (response.statusCode != 200)
-      throw Exception('Failed to answer callback query: status code ${response.statusCode}');
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to answer callback query: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to answer callback query: status code ${response.statusCode}');
   }
 
   /// Delete a message from a chat.
@@ -227,7 +228,9 @@ class Bot {
       body: _jsonEncoder.convert({'chat_id': chatId, 'message_id': messageId}),
       headers: {'Content-Type': 'application/json'},
     );
-    if (response.statusCode != 200) throw Exception('Failed to delete message: status code ${response.statusCode}');
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to delete message: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to delete message: status code ${response.statusCode}');
   }
 
   /// Delete messages from a chat.
@@ -243,7 +246,9 @@ class Bot {
         body: _jsonEncoder.convert({'chat_id': chatId, 'message_ids': toDelete.sublist(i, math.min(i + 100, length))}),
         headers: {'Content-Type': 'application/json'},
       );
-      if (response.statusCode != 200) throw Exception('Failed to delete messages: status code ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 400) continue;
+      l.w('Failed to delete messages: status code ${response.statusCode}', StackTrace.current);
+      throw Exception('Failed to delete messages: status code ${response.statusCode}');
     }
   }
 
@@ -262,7 +267,9 @@ class Bot {
       }),
       headers: {'Content-Type': 'application/json'},
     );
-    if (response.statusCode != 200) throw Exception('Failed to ban user: status code ${response.statusCode}');
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to ban user: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to ban user: status code ${response.statusCode}');
   }
 
   /// [onlyIfBanned] - Do nothing if the user is not banned.
@@ -273,7 +280,9 @@ class Bot {
       body: _jsonEncoder.convert({'chat_id': chatId, 'user_id': userId, if (onlyIfBanned) 'only_if_banned': true}),
       headers: {'Content-Type': 'application/json'},
     );
-    if (response.statusCode != 200) throw Exception('Failed to unban user: status code ${response.statusCode}');
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to unban user: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to unban user: status code ${response.statusCode}');
   }
 
   /// Start polling for [updates](https://core.telegram.org/bots/api#getupdates).
