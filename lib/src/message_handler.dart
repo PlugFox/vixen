@@ -60,6 +60,7 @@ class MessageHandler {
   void _deleteMessages() {
     _toDeleteScheduled = false;
     for (final MapEntry(key: int chat, value: List<int> ids) in _toDelete.entries) {
+      if (ids.isEmpty) continue;
       final messages = HashSet<int>.of(ids);
       ids.clear();
       Future<void>(() async {
@@ -67,7 +68,7 @@ class MessageHandler {
           await _bot.deleteMessages(chat, messages);
           l.d('Deleted ${messages.length} messages in chat $chat');
         } on Object catch (e, s) {
-          l.w('Failed to delete messages in chat $chat: $e', s);
+          l.w('Failed to delete ${messages.length} messages in chat $chat: $e', s);
         }
       }).ignore();
     }
@@ -107,6 +108,7 @@ class MessageHandler {
             ),
             mode: InsertMode.insertOrIgnore,
           );
+      l.i('Verified user $userId');
     }
   }
 
