@@ -31,12 +31,15 @@ void main(List<String> args) {
     () => runZonedGuarded<void>(
       () async {
         l.i('Preparing database');
-        final db = Database.lazy();
-        collectLogs(db, logsBuffer);
+        final db = Database.lazy(); // Open the database
+        collectLogs(db, logsBuffer); // Store logs in the database every 5 seconds
         await db.refresh();
         l.i('Starting bot');
         final lastUpdateId = db.getKey<int>(updateIdKey);
-        Bot(token: arguments.token, offset: lastUpdateId, onUpdate: handler(db)).start();
+        final bot = Bot(token: arguments.token, offset: lastUpdateId);
+        bot
+          ..addHandler(handler(bot: bot, db: db))
+          ..start();
 
         // TODO(plugfox): Server, Healthchecks, Captcha queue, Admin commands, Metrics, Tests
         // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
@@ -51,8 +54,8 @@ void main(List<String> args) {
       outputInRelease: true,
       printColors: true,
       overrideOutput: (event) {
+        //logsBuffer.add(event);
         if (event.level.level > arguments.verbose.level) return null;
-        //logsSink.writeln(output);
         return '[${event.level.prefix}] '
             '${DateFormat('dd.MM.yyyy HH:mm:ss').format(event.timestamp)} '
             '| ${event.message}';
@@ -91,8 +94,9 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
 }
 
 /// Returns a handler that processes updates and saves the offset to the database.
-void Function(int updateId, Map<String, Object?> update) handler(
-  Database db, {
+void Function(int updateId, Map<String, Object?> update) handler({
+  required Bot bot,
+  required Database db,
   Duration interval = const Duration(seconds: 5),
 }) {
   final messageHandler = MessageHandler();
