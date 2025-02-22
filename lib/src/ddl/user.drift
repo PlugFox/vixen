@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS verified (
     -- User ID
     user_id INTEGER NOT NULL PRIMARY KEY,
 
+    -- Chat ID
+    chat_id INTEGER NOT NULL,
+
     -- Date of verification
     verified_at INTEGER NOT NULL,
 
@@ -10,14 +13,24 @@ CREATE TABLE IF NOT EXISTS verified (
     reason TEXT
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS verified_chat_id_idx ON verified (chat_id);
+
 -- Banned users
 CREATE TABLE IF NOT EXISTS banned (
     -- User ID
     user_id INTEGER NOT NULL PRIMARY KEY,
 
+    -- Chat ID
+    chat_id INTEGER NOT NULL,
+
     -- Date of ban
     banned_at INTEGER NOT NULL,
+
+    -- Date of unban
+    expires_at INTEGER,
 
     -- Reason for ban
     reason TEXT
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS banned_chat_id_idx ON banned (chat_id);

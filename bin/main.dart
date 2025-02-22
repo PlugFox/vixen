@@ -40,6 +40,7 @@ void main(List<String> args) {
       () async {
         l.i('Preparing database');
         final db = Database.lazy(); // Open the database
+        await db.customStatement('VACUUM;'); // Compact the database
         collectLogs(db, logsBuffer); // Store logs in the database every 5 seconds
         await db.refresh();
 
@@ -133,7 +134,24 @@ void Function(int updateId, Map<String, Object?> update) handler({
         await (db.delete(db.captchaMessage)..where((tbl) => tbl.expiresAt.isSmallerThanValue(now))).goAndReturn();
     if (deleted.isEmpty) return;
     for (final captcha in deleted) bot.deleteMessage(captcha.chatId, captcha.messageId).ignore();
-    l.d('Deleted ${deleted.length} outdated captcha messages');
+    l.i('Deleted ${deleted.length} outdated captcha messages');
+  });
+
+  // Periodically remove expired bans
+  Timer.periodic(const Duration(minutes: 5), (_) async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final deleted = await (db.delete(db.banned)..where((tbl) => tbl.expiresAt.isSmallerThanValue(now))).goAndReturn();
+    if (deleted.isEmpty) return;
+    for (final ban in deleted) bot.unbanUser(ban.chatId, ban.userId, onlyIfBanned: true).ignore();
+    l.i('Unbanned ${deleted.length} expired bans');
+  });
+
+  // Clear the old logs
+  Timer.periodic(const Duration(days: 7), (_) async {
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
+    final deleted = await (db.delete(db.logTbl)..where((tbl) => tbl.time.isSmallerThanValue(weekAgo))).goAndReturn();
+    if (deleted.isEmpty) return;
+    l.i('Deleted ${deleted.length} old logs');
   });
 
   return (updateId, update) {

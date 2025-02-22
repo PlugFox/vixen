@@ -213,6 +213,35 @@ class Bot {
     }
   }
 
+  /// [untilDate] - Date when the user will be unbanned; Unix time.
+  /// If user is banned for more than 366 days or less than 30 seconds
+  /// from the current time they are considered to be banned forever.
+  /// Applied for supergroups and channels only.
+  Future<void> banUser(int chatId, int userId, {int? untilDate}) async {
+    final url = _buildMethodUri('banChatMember');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert({
+        'chat_id': chatId,
+        'user_id': userId,
+        if (untilDate != null) 'until_date': untilDate,
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Failed to ban user: status code ${response.statusCode}');
+  }
+
+  /// [onlyIfBanned] - Do nothing if the user is not banned.
+  Future<void> unbanUser(int chatId, int userId, {bool onlyIfBanned = true}) async {
+    final url = _buildMethodUri('unbanChatMember');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert({'chat_id': chatId, 'user_id': userId, if (onlyIfBanned) 'only_if_banned': true}),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Failed to unban user: status code ${response.statusCode}');
+  }
+
   /// Start polling for updates.
   void start() => runZonedGuarded<void>(
     () {

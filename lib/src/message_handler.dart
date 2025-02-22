@@ -98,8 +98,18 @@ class MessageHandler {
     return verified.contains(userId);
   }
 
+  /// Check if a user is banned.
+  Future<bool> _isBanned(int userId) async {
+    final banned =
+        await (_db.select(_db.banned)
+              ..where((tbl) => tbl.userId.equals(userId))
+              ..limit(1))
+            .getSingleOrNull();
+    return banned != null;
+  }
+
   /// Verify a user.
-  Future<void> _verifyUser(int userId, {int? verifiedAt, String? reason}) async {
+  Future<void> _verifyUser(int chatId, int userId, {int? verifiedAt, String? reason}) async {
     if ((await _verifiedIds).add(userId)) {
       // Insert the user into the database
       await _db
@@ -107,6 +117,7 @@ class MessageHandler {
           .insert(
             VerifiedCompanion.insert(
               userId: Value<int>(userId),
+              chatId: chatId,
               verifiedAt: verifiedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
               reason: Value.absentIfNull(reason),
             ),
@@ -132,6 +143,18 @@ class MessageHandler {
       l.d('Received message from $userId in chat $chatId');
       Future<void>(() async {
         if (await _isVerified(userId)) return;
+        if (await _isBanned(userId)) {
+          // Ban the user for additional 7 days
+          _scheduleDeleteMessage(chatId, messageId);
+          _bot
+              .banUser(
+                chatId,
+                userId,
+                untilDate: DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000,
+              )
+              .ignore();
+          return;
+        }
         _scheduleDeleteMessage(chatId, messageId);
         // Check, maybe the user is already has a captcha
         {
