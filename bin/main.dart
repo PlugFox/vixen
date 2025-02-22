@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io' as io;
 
@@ -80,6 +81,25 @@ void main(List<String> args) {
 
 /// Collects logs from the buffer and saves them to the database every 5 seconds.
 void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = const Duration(seconds: 5)}) {
+  Object? toEncodable(Object? obj) => switch (obj) {
+    DateTime dt => dt.toIso8601String(),
+    Exception e => e.toString(),
+    Error e => e.toString(),
+    StackTrace st => st.toString(),
+    _ => obj.toString(),
+  };
+
+  Value<String> encodeContext(Map<String, Object?>? context) {
+    if (context == null || context.isEmpty) return const Value.absent();
+    try {
+      return Value(jsonEncode(context, toEncodable: toEncodable));
+    } on Object {
+      debugger(); // Set a breakpoint here
+      l.w('Failed to encode context');
+      return const Value.absent();
+    }
+  }
+
   void saveLogs(Timer timer) =>
       Future<void>(() async {
         try {
@@ -94,6 +114,7 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
                     LogMessageError msg => Value<String?>(msg.stackTrace.toString()),
                     _ => const Value<String?>.absent(),
                   },
+                  context: encodeContext(e.context),
                 ),
               )
               .toList(growable: false);
@@ -128,7 +149,7 @@ void Function(int updateId, Map<String, Object?> update) handler({
   });
 
   // Periodically remove outdated captcha messages
-  Timer.periodic(const Duration(seconds: captchaLifetime ~/ 2), (_) async {
+  Timer.periodic(const Duration(seconds: captchaLifetime ~/ 10), (_) async {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final deleted =
         await (db.delete(db.captchaMessage)..where((tbl) => tbl.expiresAt.isSmallerThanValue(now))).goAndReturn();
@@ -156,16 +177,14 @@ void Function(int updateId, Map<String, Object?> update) handler({
 
   return (updateId, update) {
     lastOffset = updateId;
-    l.d('Received update: $update');
+    l.d('Received update', update);
     if (update['message'] case Map<String, Object?> message) {
       messageHandler(message);
     } else if (update['callback_query'] case Map<String, Object?> callback) {
       callbackHandler(callback);
-    } else {
-      if (kDebugMode) {
-        l.d('Unknown update type: $update');
-        debugger(); // Set a breakpoint here
-      }
+    } else if (kDebugMode) {
+      l.d('Unknown update type: $update');
+      debugger(); // Set a breakpoint here
     }
   };
 }

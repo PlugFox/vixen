@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS verified (
     -- Date of verification
     verified_at INTEGER NOT NULL,
 
+    -- Full name of the user at the time of verification
+    name TEXT NOT NULL,
+
     -- Reason for verification
     reason TEXT
 ) STRICT;
@@ -28,6 +31,9 @@ CREATE TABLE IF NOT EXISTS banned (
 
     -- Date of unban
     expires_at INTEGER,
+
+    -- Full name of the user at the time of ban
+    name TEXT NOT NULL,
 
     -- Reason for ban
     reason TEXT

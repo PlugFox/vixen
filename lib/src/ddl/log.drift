@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS log_tbl (
     message TEXT NOT NULL,
 
     -- StackTrace a stack trace associated with this log event
-    stack TEXT
+    stack TEXT,
+
+    -- Context
+    context TEXT
 ) STRICT;
 
 -- Indexes

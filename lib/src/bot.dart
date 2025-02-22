@@ -31,6 +31,20 @@ class Bot {
 
   final List<OnUpdateHandler> _handlers; // The list of handlers
 
+  /// Escape special characters in a MarkdownV2 string.
+  static String escapeMarkdownV2(String text) {
+    const specialChars = r'_*\[\]()~`>#+\-=|{}.!';
+    final buffer = StringBuffer();
+    for (final rune in text.runes) {
+      var char = String.fromCharCode(rune);
+      if (specialChars.contains(char)) {
+        buffer.write(r'\');
+      }
+      buffer.write(char);
+    }
+    return buffer.toString();
+  }
+
   /// Add a handler to be called when an update is received.
   void addHandler(OnUpdateHandler handler) {
     _handlers.add(handler);
@@ -114,11 +128,11 @@ class Bot {
     var request = http.MultipartRequest('POST', url);
     request.fields
       ..['chat_id'] = chatId.toString()
-      ..['parse_mode'] = 'MarkdownV2'
       ..['protect_content'] = 'true'
       ..['disable_notification'] = notification ? 'false' : 'true';
     if (caption != null)
       request.fields
+        ..['parse_mode'] = 'MarkdownV2'
         ..['caption'] = caption
         ..['show_caption_above_media'] = 'true';
     if (reply != null) request.fields['reply_markup'] = reply;
@@ -131,6 +145,26 @@ class Bot {
     } else {
       throw Exception('Failed to send message: $result');
     }
+  }
+
+  /// Edit a photo caption in a chat.
+  Future<void> editPhotoCaption({required int chatId, required int messageId, String? caption, String? reply}) async {
+    final url = _buildMethodUri('editMessageCaption');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert({
+        'chat_id': chatId,
+        'message_id': messageId,
+        if (caption != null) ...<String, Object?>{
+          'parse_mode': 'MarkdownV2',
+          'caption': caption,
+          'show_caption_above_media': true,
+        },
+        if (reply != null) 'reply_markup': reply,
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) throw Exception('Failed to edit photo caption: status code ${response.statusCode}');
   }
 
   /// Edit a message in a chat.
@@ -242,10 +276,13 @@ class Bot {
     if (response.statusCode != 200) throw Exception('Failed to unban user: status code ${response.statusCode}');
   }
 
-  /// Start polling for updates.
-  void start() => runZonedGuarded<void>(
+  /// Start polling for [updates](https://core.telegram.org/bots/api#getupdates).
+  /// [types] - The [types of updates](https://core.telegram.org/bots/api#update) to fetch.
+  /// By default, it fetches messages and callback queries.
+  void start({Set<String> types = const <String>{'message', 'callback_query'}}) => runZonedGuarded<void>(
     () {
       stop(); // Stop any previous poller
+      final allowedUpdates = jsonEncode(types.toList(growable: false));
       final url = _buildMethodUri('getUpdates');
       final poller = _poller = Completer<void>()..future.ignore();
       final throttleStopwatch = Stopwatch()..start();
@@ -260,6 +297,7 @@ class Bot {
                   if (_offset > 0) 'offset': _offset.toString(),
                   'limit': '100',
                   'timeout': _interval.inSeconds.toString(),
+                  'allowed_updates': allowedUpdates,
                 },
               ),
             ).timeout(_interval * 2);

@@ -88,7 +88,7 @@ class CaptchaGenerator {
 
   final Future<img.Image> _font;
 
-  Future<Captcha> generate({int width = 480, int height = 180, int length = 6, CaptchaColor? background}) async {
+  Future<Captcha> generate({int width = 480, int height = 180, int length = 4, CaptchaColor? background}) async {
     // Create a new image twice the size to improve quality
     var image = img.Image(width: width * 2, height: height * 2, format: img.Format.uint8);
 
@@ -210,7 +210,7 @@ void _captchaGeneratorIsolate(SendPort sendPort) => l.capture(
                 .generate(width: request.width, height: request.height, length: request.length)
                 .then(sendPort.send);
           default:
-            l.w('Unknown message in captcha generator isolate: $message');
+            l.w('Unknown message in captcha generator isolate: $message', StackTrace.current);
         }
       }, cancelOnError: false);
     },
@@ -296,14 +296,14 @@ class CaptchaQueue {
             case SendPort sendPort:
               completer.complete(sendPort);
             default:
-              l.w('Unknown message captcha isolate message: $message');
+              l.w('Unknown message captcha isolate message: $message', StackTrace.current);
           }
         }, cancelOnError: false);
     _isolate = await Isolate.spawn(
       _captchaGeneratorIsolate,
       receivePort.sendPort,
       errorsAreFatal: false,
-      debugName: 'CaptchaGenerator',
+      debugName: 'Captcha generator',
     );
     _sendPort = await completer.future;
     _maybeRequest();

@@ -41,7 +41,7 @@ class CallbackHandler {
                     ..limit(1))
                   .getSingleOrNull();
           if (captcha == null) {
-            l.w('Captcha not found for message $messageId');
+            l.w('Captcha not found for message $messageId', StackTrace.current);
             _bot.answerCallbackQuery(callbackQueryId, 'Captcha not found').ignore();
             _bot.deleteMessage(chatId, messageId).ignore();
             return;
@@ -104,7 +104,7 @@ class CallbackHandler {
             case kbCaptchaZero:
               input += '0';
             default:
-              l.w('Invalid captcha input: $data');
+              l.w('Invalid captcha input: $data', StackTrace.current);
               _bot.answerCallbackQuery(callbackQueryId, 'Invalid input').ignore();
               return;
           }
@@ -117,14 +117,21 @@ class CallbackHandler {
             // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
             return;
           } else {
-            _bot
-                .answerCallbackQuery(
-                  callbackQueryId,
-                  input.isNotEmpty
-                      ? 'Current input: ${input.split('').map((i) => _numbers[i] ?? i).join(' ')}'
-                      : 'Current input: empty',
-                )
-                .ignore();
+            final currentInputText =
+                input.isNotEmpty
+                    ? 'Current input: ${input.split('').map((i) => _numbers[i] ?? i).join(' ')}'
+                    : 'Current input: empty';
+            _bot.answerCallbackQuery(callbackQueryId, currentInputText).ignore();
+            if (input != captcha.input) {
+              _bot
+                  .editPhotoCaption(
+                    chatId: chatId,
+                    messageId: messageId,
+                    caption: input.isEmpty ? captcha.caption : '${captcha.caption}\n\n_${currentInputText}_',
+                    reply: defaultCaptchaKeyboard,
+                  )
+                  .ignore();
+            }
             final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
             _db
                 .update(_db.captchaMessage)

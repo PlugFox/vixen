@@ -109,22 +109,61 @@ class MessageHandler {
   }
 
   /// Verify a user.
-  Future<void> _verifyUser(int chatId, int userId, {int? verifiedAt, String? reason}) async {
+  Future<void> _verifyUser({
+    required int chatId,
+    required int userId,
+    required String name,
+    int? verifiedAt,
+    String? reason,
+  }) async {
     if ((await _verifiedIds).add(userId)) {
-      // Insert the user into the database
-      await _db
-          .into(_db.verified)
-          .insert(
+      // Insert the user into the database if not already verified
+      await _db.batch((batch) {
+        batch
+          ..deleteWhere(_db.banned, (tbl) => tbl.userId.equals(userId))
+          ..insert(
+            _db.verified,
             VerifiedCompanion.insert(
               userId: Value<int>(userId),
               chatId: chatId,
               verifiedAt: verifiedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
-              reason: Value.absentIfNull(reason),
+              name: name,
+              reason: Value<String?>.absentIfNull(reason),
             ),
             mode: InsertMode.insertOrIgnore,
           );
+      });
       l.i('Verified user $userId');
     }
+  }
+
+  /// Ban a user.
+  Future<void> _banUser({
+    required int chatId,
+    required int userId,
+    required String name,
+    int? bannedAt,
+    int? expiresAt,
+    String? reason,
+  }) async {
+    (await _verifiedIds).remove(userId);
+    await _db.batch((batch) {
+      batch
+        ..deleteWhere(_db.verified, (tbl) => tbl.userId.equals(userId))
+        ..insert(
+          _db.banned,
+          BannedCompanion.insert(
+            userId: Value<int>(userId),
+            chatId: chatId,
+            bannedAt: bannedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            expiresAt: Value<int?>.absentIfNull(expiresAt),
+            name: name,
+            reason: Value<String?>.absentIfNull(reason),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+    });
+    l.i('Banned user $userId');
   }
 
   // --- Handle message --- //
@@ -168,18 +207,18 @@ class MessageHandler {
         }
 
         final captcha = await _captchaQueue.next();
-        final username = from['username']?.toString();
-        final name = '${from['first_name'] ?? ''} ${from['last_name'] ?? ''}'.trim();
+        final username = Bot.escapeMarkdownV2(from['username']?.toString() ?? '');
+        final name = Bot.escapeMarkdownV2('${from['first_name'] ?? ''} ${from['last_name'] ?? ''}'.trim());
         final String caption;
         {
           // Generate the caption for the message
           final captionBuffer = StringBuffer();
           if (name.isNotEmpty) {
-            captionBuffer.writeln('👋 Hello, **[$name](tg://user?id=$userId)**\\!');
-          } else if (username?.isNotEmpty == true) {
-            captionBuffer.writeln('👋 Hello, **@$username**\\!');
+            captionBuffer.writeln('👋 Hello, *[$name](tg://user?id=$userId)*\\!');
+          } else if (username.isNotEmpty == true) {
+            captionBuffer.writeln('👋 Hello, *@$username*\\!');
           }
-          captionBuffer.writeln('Please solve the following captcha:');
+          captionBuffer.writeln('\nPlease solve the _following captcha_ to continue chatting\\.');
           //captionBuffer.writeln(captcha.text);
           caption = captionBuffer.toString();
         }
