@@ -64,9 +64,7 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
               )
               .toList(growable: false);
           buffer.clear();
-          await db.batch((batch) {
-            batch.insertAll(db.logTbl, rows);
-          });
+          await db.batch((batch) => batch.insertAll(db.logTbl, rows, mode: InsertMode.insertOrReplace));
           //l.d('Inserted ${rows.length} logs');
         } on Object catch (e, s) {
           l.e('Failed to insert logs: $e', s);
