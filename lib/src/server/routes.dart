@@ -101,13 +101,13 @@ Future<Response> $adminDatabase(Request request) async {
       return Responses.ok(
         bytes,
         headers: <String, String>{
-          io.HttpHeaders.contentTypeHeader: 'application/octet-stream', // Универсальный MIME-тип
-          io.HttpHeaders.contentLengthHeader: bytes.length.toString(), // Размер файла
-          io.HttpHeaders.contentDisposition: 'attachment; filename="database.sqlite3"', // Скачивание
-          io.HttpHeaders.cacheControlHeader: 'no-cache, no-store, must-revalidate', // Без кеширования
-          io.HttpHeaders.pragmaHeader: 'no-cache', // Для старых браузеров
-          io.HttpHeaders.expiresHeader: '0', // Немедленно устаревает
-          io.HttpHeaders.acceptRangesHeader: 'bytes', // Позволяет поддерживать частичные загрузки
+          io.HttpHeaders.contentTypeHeader: 'application/octet-stream', // Universal MIME type
+          io.HttpHeaders.contentLengthHeader: bytes.length.toString(), // Size in bytes
+          io.HttpHeaders.contentDisposition: 'attachment; filename="vixen.db"', // Download as file
+          io.HttpHeaders.cacheControlHeader: 'no-cache, no-store, must-revalidate', // Without caching
+          io.HttpHeaders.pragmaHeader: 'no-cache', // For HTTP/1.0 compatibility
+          io.HttpHeaders.expiresHeader: '0', // Outdated content
+          io.HttpHeaders.acceptRangesHeader: 'bytes', // Allow partial requests
         },
       );
   }
