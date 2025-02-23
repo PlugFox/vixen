@@ -119,13 +119,13 @@ jobs:
       #    working-directory: ./
       #    update-comment: true
 
-      - name: 📥 Upload coverage report
-        timeout-minutes: 5
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+      #- name: 📥 Upload coverage report
+      #  timeout-minutes: 5
+      #  if: ${{ github.actor != 'dependabot[bot]' }}
+      #  uses: codecov/codecov-action@v2
+      #  with:
+      #    token: ${{ secrets.CODECOV_TOKEN }}
+      #    files: ./coverage/lcov.info
 
       - name: 📥 Upload test report
         uses: actions/upload-artifact@v4
