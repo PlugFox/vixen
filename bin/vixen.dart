@@ -109,8 +109,8 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
         try {
           if (buffer.isEmpty) return;
           final rows = buffer
-              .map<LogTblCompanion>(
-                (e) => LogTblCompanion.insert(
+              .map<LoggerCompanion>(
+                (e) => LoggerCompanion.insert(
                   level: e.level.level,
                   message: e.message.toString(),
                   time: Value(e.timestamp.millisecondsSinceEpoch),
@@ -123,7 +123,7 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
               )
               .toList(growable: false);
           buffer.clear();
-          await db.batch((batch) => batch.insertAll(db.logTbl, rows, mode: InsertMode.insertOrReplace));
+          await db.batch((batch) => batch.insertAll(db.logger, rows, mode: InsertMode.insertOrReplace));
           //l.d('Inserted ${rows.length} logs');
         } on Object catch (e, s) {
           l.e('Failed to insert logs: $e', s);
@@ -174,7 +174,7 @@ void Function(int updateId, Map<String, Object?> update) handler({
   // Clear the old logs
   Timer.periodic(const Duration(days: 7), (_) async {
     final weekAgo = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
-    final deleted = await (db.delete(db.logTbl)..where((tbl) => tbl.time.isSmallerThanValue(weekAgo))).goAndReturn();
+    final deleted = await (db.delete(db.logger)..where((tbl) => tbl.time.isSmallerThanValue(weekAgo))).goAndReturn();
     if (deleted.isEmpty) return;
     l.i('Deleted ${deleted.length} old logs');
   });

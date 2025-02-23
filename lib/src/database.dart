@@ -139,7 +139,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -166,22 +166,37 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
   /// happened at a different [GeneratedDatabase.schemaVersion].
   /// Schema version upgrades and downgrades will both be run here.
   @override
-  OnUpgrade get onUpgrade => (m, from, to) async {
-    await m.createAll();
-    return _update(_db, m, from, to);
-  };
+  OnUpgrade get onUpgrade => (m, from, to) async => _update(_db, m, from, to);
 
   /// Executes after the database is ready to be used (ie. it has been opened
   /// and all migrations ran), but before any other queries will be sent. This
   /// makes it a suitable place to populate data after the database has been
   /// created or set sqlite `PRAGMAS` that you need.
   @override
-  OnBeforeOpen get beforeOpen => (details) async {};
+  OnBeforeOpen get beforeOpen => (details) async {
+    // await details.executor.runCustom('PRAGMA foreign_keys = ON;');
+  };
 
   /// https://moor.simonbinder.eu/docs/advanced-features/migrations/
   static Future<void> _update(Database db, Migrator m, int from, int to) async {
-    await m.createAll();
-    if (from >= to) return;
+    if (from >= to) return; // Don't run if the schema is already up to date
+    switch (from) {
+      case 1:
+        // Migration from 1 to 2
+        await m.deleteTable('log_tbl');
+        await m.deleteTable('characteristic_tbl');
+        await m.deleteTable('settings_tbl');
+        await m.createAll();
+      case 2:
+        break; // Migration from 2 to 3
+      case 3:
+        break; // Migration from 3 to 4
+      default:
+        if (kDebugMode) throw UnimplementedError('Unsupported migration from $from to $to');
+    }
+
+    // Recursively upgrade to the latest version
+    await _update(db, m, from + 1, to);
   }
 }
 

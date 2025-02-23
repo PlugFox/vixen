@@ -1,5 +1,5 @@
 -- Characteristics table
-CREATE TABLE IF NOT EXISTS characteristic_tbl (
+CREATE TABLE IF NOT EXISTS characteristic (
     -- req Type
     type TEXT NOT NULL CHECK(length(type) > 0 AND length(type) <= 255),
 
@@ -19,11 +19,11 @@ CREATE TABLE IF NOT EXISTS characteristic_tbl (
 ) STRICT;
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS characteristic_meta_created_at_idx ON characteristic_tbl (meta_created_at);
-CREATE INDEX IF NOT EXISTS characteristic_meta_updated_at_idx ON characteristic_tbl (meta_updated_at);
+CREATE INDEX IF NOT EXISTS characteristic_meta_created_at_idx ON characteristic (meta_created_at);
+CREATE INDEX IF NOT EXISTS characteristic_meta_updated_at_idx ON characteristic (meta_updated_at);
 
 -- Triggers
-CREATE TRIGGER IF NOT EXISTS characteristic_meta_updated_at_trig AFTER UPDATE ON characteristic_tbl
+CREATE TRIGGER IF NOT EXISTS characteristic_meta_updated_at_trig AFTER UPDATE ON characteristic
     BEGIN
-        UPDATE characteristic_tbl SET meta_updated_at = strftime('%s', 'now') WHERE type = NEW.type AND id = NEW.id;
+        UPDATE characteristic SET meta_updated_at = strftime('%s', 'now') WHERE type = NEW.type AND id = NEW.id;
     END;

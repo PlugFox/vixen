@@ -1,5 +1,5 @@
 -- Logs table
-CREATE TABLE IF NOT EXISTS log_tbl (
+CREATE TABLE IF NOT EXISTS logger (
     -- req Unique identifier of the log
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 
@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS log_tbl (
 ) STRICT;
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS log_time_idx ON log_tbl (time);
-CREATE INDEX IF NOT EXISTS log_level_idx ON log_tbl (level);
+CREATE INDEX IF NOT EXISTS logger_time_idx ON logger (time);
+CREATE INDEX IF NOT EXISTS logger_level_idx ON logger (level);
 
 /*
 -- Search table
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS log_prefix_tbl (
 
     -- Foreign keys
     FOREIGN KEY (log_id)
-        REFERENCES log_tbl (id)
+        REFERENCES logger (id)
             ON UPDATE CASCADE
             ON DELETE CASCADE
 ) STRICT;

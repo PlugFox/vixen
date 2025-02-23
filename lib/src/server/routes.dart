@@ -43,7 +43,7 @@ Future<Response> $adminLogs(Request request) async {
     if (id == null)
       return Responses.error(BadRequestException(detail: 'Invalid ID', data: <String, Object?>{'id': $id}));
     final log =
-        await (db.select(db.logTbl)
+        await (db.select(db.logger)
               ..where((tbl) => tbl.id.equals(id))
               ..limit(1))
             .getSingleOrNull();
@@ -57,19 +57,20 @@ Future<Response> $adminLogs(Request request) async {
       if (log.context != null) 'context': log.context,
     });
   } else {
-    final query = db.select(db.logTbl);
-    final $level = request.url.queryParameters['level'];
-    final int level;
-    if ($level case String value when value.isNotEmpty) {
-      level = int.tryParse(value) ?? 3;
-    } else {
-      level = 3;
-    }
+    final query = db.select(db.logger);
+    final level = switch (request.url.queryParameters['level']) {
+          String value when value.isNotEmpty => int.tryParse(value) ?? 3,
+          _ => 3,
+        },
+        limit = switch (request.url.queryParameters['limit']) {
+          String value when value.isNotEmpty => int.tryParse(value) ?? 1000,
+          _ => 1000,
+        };
     final logs =
         await (query
               ..where((tbl) => tbl.level.isSmallerOrEqualValue(level.clamp(1, 6)))
               ..orderBy([(u) => OrderingTerm(expression: u.time, mode: OrderingMode.desc)])
-              ..limit(1000))
+              ..limit(limit))
             .get();
     return Responses.ok(<String, Object?>{
       'items': logs
