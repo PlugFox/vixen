@@ -11,6 +11,7 @@
       "args": [],
       "env": {
         "CONFIG_VERBOSE": "debug",
+        "CONFIG_DATABASE": ":memory:",
       }
     },
     // https://pub.dev/packages/test

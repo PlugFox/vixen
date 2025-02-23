@@ -38,15 +38,15 @@ void main(List<String> args) {
   l.capture(
     () => runZonedGuarded<void>(
       () async {
-        l.i('Preparing database');
         final db = Database.lazy(path: arguments.database); // Open the database
         await db.customStatement('VACUUM;'); // Compact the database
         collectLogs(db, logsBuffer); // Store logs in the database every 5 seconds
         await db.refresh();
+        l.i('Database "${arguments.database}" is ready');
 
-        l.i('Starting the captcha queue');
         final captchaQueue = CaptchaQueue(size: 24, length: 4, width: 480, height: 180);
         await captchaQueue.start();
+        l.i('Captcha queue is running');
 
         final srv = await startServer(arguments: arguments, database: db);
         l.i('Server is running on ${srv.address.address}:${srv.port}');

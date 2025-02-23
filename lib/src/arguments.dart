@@ -79,7 +79,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'chats', 'secret', 'verbose', 'database'};
+      const options = <String>{'token', 'chats', 'secret', 'verbose', 'database', 'address', 'port'};
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //
