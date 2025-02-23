@@ -30,11 +30,6 @@ void main(List<String> args) {
 
   final arguments = Arguments.parse(args);
 
-  if (arguments.chats.isEmpty) {
-    io.stderr.writeln('No chat IDs provided');
-    io.exit(2);
-  }
-
   // Handle the shutdown event
   l.i('Press [Ctrl+C] to exit');
   shutdownHandler(() async {

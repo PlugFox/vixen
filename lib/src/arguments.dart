@@ -22,7 +22,7 @@ ArgParser _buildParser() =>
         'chats',
         abbr: 'c',
         aliases: ['groups', 'chat', 'chat_ids'],
-        mandatory: true,
+        mandatory: false,
         help: 'Comma-separated list of chat IDs',
         valueHelp: '123,-456,-789',
       )

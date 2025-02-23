@@ -117,7 +117,7 @@ class MessageHandler {
     }) {
       final userId = from['id'], chatId = chat['id'];
       if (userId is! int || chatId is! int) return;
-      if (!_chats.contains(chatId)) return;
+      if (_chats.isNotEmpty && !_chats.contains(chatId)) return;
       l.d('Received message from $userId in chat $chatId');
       final type = Bot.getMessageType(message);
       final name = Bot.formatUsername(from);
