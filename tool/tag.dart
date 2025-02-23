@@ -14,52 +14,56 @@ Future<void> _runGitCommand(List<String> args) async {
 /// dart run tool/tag.dart
 void main() => runZonedGuarded<void>(
   () async {
-    // Check if there any uncommitted or unpushed changes
+    // Check if there are any uncommitted or unpushed changes
     final statusResult = await Process.run('git', ['status', '--porcelain']);
     if ((statusResult.stdout as String).trim().isNotEmpty) {
-      l.e('There are uncommitted changes');
+      l.e('There are uncommitted changes.');
       exit(1);
     }
     final aheadResult = await Process.run('git', ['rev-list', '--count', '--left-only', '@{u}...HEAD']);
     if ((aheadResult.stdout as String).trim() != '0') {
-      l.e('There are unpushed changes');
+      l.e('There are unpushed changes.');
       exit(1);
     }
 
     // Fetch pubspec.yaml file to get the version
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) {
-      l.w('File pubspec.yaml not found');
+      l.w('File pubspec.yaml not found.');
       exit(1);
     }
     final pubspecContent = pubspecFile.readAsLinesSync();
     final versionLine = pubspecContent.firstWhereOrNull((line) => line.trim().startsWith('version:'));
     if (versionLine == null || versionLine.isEmpty) {
-      l.e('Version not found in pubspec.yaml');
+      l.e('Version not found in pubspec.yaml.');
       exit(1);
     }
     final version = versionLine.split(':')[1].trim();
     l.i('Found version: $version');
-    final [major, minor, patch] = version.split('.').map(int.tryParse).toList(growable: false);
-    if (major == null || minor == null || patch == null) {
-      l.e('Invalid version format');
+
+    // Validate version format
+    final versionParts = version.split('.');
+    if (versionParts.length != 3 || versionParts.any((e) => int.tryParse(e) == null)) {
+      l.e('Invalid version format: $version');
       exit(1);
     }
 
-    // Check if the version is already tagged
-    final result = await Process.run('git', ['tag', '-l', 'v$version']);
-    if ((result.stdout as String).trim() == version) {
-      l.e('Tag $version already exists');
+    final tagName = 'v$version'; // Tag format: v1.2.3
+
+    // Check if the tag already exists
+    final tagResult = await Process.run('git', ['tag', '-l', tagName]);
+    if (tagResult.stdout?.toString().trim() == tagName) {
+      l.e('Tag $tagName already exists.');
       exit(1);
     }
 
     // Create tag
-    await _runGitCommand(['tag', 'v$version']);
-    l.i('Tag v$version created.');
+    await _runGitCommand(['tag', tagName]);
+    l.i('Tag $tagName created.');
 
     // Push tag
-    await _runGitCommand(['push', 'origin', version]);
-    l.i('Tag $version pushed to remote repository.');
+    await _runGitCommand(['push', 'origin', tagName]);
+    l.i('Tag $tagName pushed to remote repository.');
   },
   (e, st) {
     l.e('Unexpected error: $e', st);
