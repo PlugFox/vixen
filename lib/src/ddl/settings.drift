@@ -1,7 +1,10 @@
 -- Settings table
 CREATE TABLE IF NOT EXISTS settings_tbl (
+    -- Chat ID
+    chat_id INTEGER NOT NULL,
+
     -- User ID
-    user_id TEXT NOT NULL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
 
     -- JSON data
     json_data TEXT NOT NULL CHECK(length(json_data) > 2 AND json_valid(json_data)),
@@ -12,7 +15,10 @@ CREATE TABLE IF NOT EXISTS settings_tbl (
     -- Created date (unixtime in seconds)
     meta_created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     -- Updated date (unixtime in seconds)
-    meta_updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')) CHECK(meta_updated_at >= meta_created_at)
+    meta_updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')) CHECK(meta_updated_at >= meta_created_at),
+
+    -- Composite primary key
+    PRIMARY KEY (chat_id, user_id)
 ) STRICT;
 
 -- Triggers

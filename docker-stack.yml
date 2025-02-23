@@ -1,0 +1,60 @@
+version: "3.9"
+
+# https://github.com/plugfox/vixen
+# https://hub.docker.com/repository/docker/plugfox/vixen
+services:
+  # Vixen telegram bot
+  vixen:
+    hostname: vixen
+    image: plugfox/vixen:latest
+    #command: /app/vixen.run --port 8080
+    networks:
+      - traefik
+    #ports:
+    #  - 8080:8080
+    volumes:
+      - vixen-data:/app/data
+    environment:
+      TZ: UTC
+      ENVIRONMENT: production
+      CONFIG_TOKEN: 123:ABC
+      CONFIG_SECRET: abc123
+      CONFIG_CHATS: -123,456,-789
+      CONFIG_DATABASE: /app/data/vixen.db
+      CONFIG_VERBOSE: warn
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "docker.group=vixen"
+        ####################################################################
+        - "traefik.enable=true"
+        - "traefik.http.routers.vixen.rule=Host(`vixen.plugfox.dev`)"
+        - "traefik.http.routers.vixen.entrypoints=https"
+        - "traefik.http.routers.vixen.tls=true"
+        - "traefik.http.routers.vixen.tls.certresolver=le"
+        - "traefik.http.routers.vixen.service=vixen"
+        - "traefik.http.services.vixen.loadbalancer.server.port=8080"
+        - "traefik.http.routers.vixen.middlewares=vixen-ratelimit"
+        - "traefik.http.middlewares.vixen-ratelimit.ratelimit.average=100"
+        - "traefik.http.middlewares.vixen-ratelimit.ratelimit.burst=50"
+
+# Traefik is a reverse proxy
+networks:
+  # Traefik overlay network
+  traefik:
+    name: traefik
+    external: true
+    attachable: true
+    driver: overlay
+
+# docker volume create --driver local --name vixen-data
+volumes:
+  vixen-data:
+    name: vixen-data
+    driver: local

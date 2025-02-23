@@ -39,7 +39,7 @@ issue_tracker: https://github.com/plugfox/vixen/issues
 # ==============================================================================
 
 executables:
-  - bin/main.dart
+  - bin/vixen.dart
 
 # ==============================================================================
 # DEPENDENCIES
@@ -60,6 +60,10 @@ dependencies:
   async: ^2.13.0
   convert: ^3.1.2
   intl: ^0.20.2
+  stack_trace: ^1.12.1
+
+  # Image
+  image: ^4.5.3
 
   # Logger
   l: ^5.0.0
@@ -69,6 +73,10 @@ dependencies:
 
   # Network
   http: ^1.2.2
+
+  # Server
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
 
 dev_dependencies:
   # Roadmap generation

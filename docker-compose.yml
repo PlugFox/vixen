@@ -1,0 +1,21 @@
+# docker compose build
+# docker compose up -d
+# https://github.com/plugfox/vixen
+services:
+  vixen:
+    hostname: vixen
+    image: vixen:latest
+    command: /app/vixen.run --port 80
+    ports:
+      - 8080:80
+    environment:
+      CONFIG_TOKEN: 123:ABC
+      CONFIG_SECRET: abc123
+      CONFIG_CHATS: -123,456,-789
+      CONFIG_DATABASE: /app/data/vixen.db
+      CONFIG_VERBOSE: all
+    volumes:
+      - ./data:/app/data
+    build:
+      context: .
+      dockerfile: Dockerfile

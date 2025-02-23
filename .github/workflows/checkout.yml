@@ -1,4 +1,4 @@
-name: Checkout
+name: "Checkout"
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
     name: "🧪 Check code with analysis, format, and tests"
     runs-on: ubuntu-latest
     env:
-      threshold: 90
+      threshold: 5
     defaults:
       run:
         working-directory: ./

@@ -2,9 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Run (debug, memory)",
+      "type": "dart",
+      "program": "bin/vixen.dart",
+      "request": "launch",
+      "flutterMode": "debug",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "env": {
+        "CONFIG_VERBOSE": "debug",
+        "CONFIG_DATABASE": ":memory:",
+      }
+    },
+    {
       "name": "Run (debug)",
       "type": "dart",
-      "program": "bin/main.dart",
+      "program": "bin/vixen.dart",
       "request": "launch",
       "flutterMode": "debug",
       "cwd": "${workspaceFolder}",
@@ -12,6 +25,18 @@
       "env": {
         "CONFIG_VERBOSE": "debug",
       }
+    },
+    {
+      "name": "Help",
+      "type": "dart",
+      "program": "bin/vixen.dart",
+      "request": "launch",
+      "flutterMode": "debug",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--help"
+      ],
+      "env": {}
     },
     // https://pub.dev/packages/test
     {

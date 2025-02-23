@@ -3,6 +3,7 @@ import 'dart:io' as io;
 
 import 'package:args/args.dart';
 import 'package:l/l.dart' as logger;
+import 'package:vixen/src/constant/constants.dart';
 
 /// Parse arguments
 ArgParser _buildParser() =>
@@ -18,6 +19,14 @@ ArgParser _buildParser() =>
         valueHelp: '123:ABC-DEF',
       )
       ..addOption(
+        'chats',
+        abbr: 'c',
+        aliases: ['groups', 'chat', 'chat_ids'],
+        mandatory: false,
+        help: 'Comma-separated list of chat IDs',
+        valueHelp: '123,-456,-789',
+      )
+      ..addOption(
         'secret',
         abbr: 's',
         aliases: ['admin', 'api'],
@@ -28,19 +37,36 @@ ArgParser _buildParser() =>
       /* ..addSeparator('') */
       ..addOption(
         'database',
-        abbr: 'p',
+        abbr: 'd',
         aliases: ['db', 'sqlite', 'sql', 'file', 'path'],
         mandatory: false,
         help: 'Path to the SQLite database file',
-        defaultsTo: 'data/db.sqlite3',
-        valueHelp: 'data/db.sqlite3',
+        defaultsTo: 'data/vixen.db',
+        valueHelp: 'data/vixen.db',
+      )
+      ..addOption(
+        'address',
+        abbr: 'a',
+        aliases: ['host', 'server', 'ip'],
+        mandatory: false,
+        help: 'Address to bind the server to',
+        defaultsTo: '0.0.0.0',
+        valueHelp: '0.0.0.0',
+      )
+      ..addOption(
+        'port',
+        abbr: 'p',
+        mandatory: false,
+        help: 'Port to bind the server to',
+        defaultsTo: '8080',
+        valueHelp: '8080',
       )
       ..addOption(
         'verbose',
         abbr: 'v',
         aliases: ['logging', 'logger', 'logs', 'log'],
         mandatory: false,
-        help: 'Verbose mode for output: debug | info | warn | error',
+        help: 'Verbose mode for output: all | debug | info | warn | error',
         defaultsTo: 'warn',
         valueHelp: 'info',
       );
@@ -53,7 +79,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'secret', 'verbose', 'database'};
+      const options = <String>{'token', 'chats', 'secret', 'verbose', 'database', 'address', 'port'};
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //
@@ -105,7 +131,13 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           _ => const logger.LogLevel.warning(),
         },
         token: table['token'] ?? '',
-        secret: table['secret'] ?? '',
+        chats: HashSet<int>.from(
+          table['chats']?.split(',').map((e) => int.tryParse(e.trim())) ?? const Iterable.empty(),
+        ),
+        secret: table['secret'] ?? (kDebugMode ? Object().hashCode.toRadixString(36) : ''),
+        database: table['database'] ?? 'data/vixen.db',
+        address: table['address'] ?? io.InternetAddress.anyIPv4,
+        port: int.tryParse(table['port'] ?? '8080') ?? 8080,
       );
     } on FormatException {
       io.stderr
@@ -128,8 +160,12 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   Arguments._({
     required this.verbose,
+    required this.chats,
     required this.token,
     required this.secret,
+    required this.database,
+    required this.address,
+    required this.port,
     required Map<String, String> arguments,
   }) : _arguments = arguments;
 
@@ -139,8 +175,20 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
   /// Telegram bot token
   final String token;
 
+  /// List of chat IDs
+  final Set<int> chats;
+
   /// Secret admin API key
   final String secret;
+
+  /// Path to the SQLite database file
+  final String database;
+
+  /// Address to bind the server to
+  final Object address;
+
+  /// Port to bind the server to
+  final int port;
 
   /// Arguments
   final Map<String, String> _arguments;

@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_foreach
+import 'dart:collection';
 import 'dart:io' as io;
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart' as ffi;
@@ -39,13 +41,20 @@ abstract interface class IKeyValueStorage {
 }
 
 @DriftDatabase(
-  include: <String>{'ddl/kv.drift', 'ddl/characteristic.drift', 'ddl/log.drift', 'ddl/settings.drift'},
+  include: <String>{
+    'ddl/kv.drift',
+    'ddl/characteristic.drift',
+    'ddl/log.drift',
+    'ddl/settings.drift',
+    'ddl/user.drift', // Verified, Banned
+    'ddl/captcha.drift', // Captcha messages
+  },
   tables: <Type>[],
   daos: <Type>[],
   queries: $queries,
 )
 class Database extends _$Database
-    with _DatabaseKeyValueMixin
+    with _DatabaseUserMixin, _DatabaseKeyValueMixin
     implements GeneratedDatabase, DatabaseConnectionUser, QueryExecutorUser, IKeyValueStorage {
   /// Creates a database that will store its result in the [path], creating it
   /// if it doesn't exist.
@@ -173,6 +182,134 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
   static Future<void> _update(Database db, Migrator m, int from, int to) async {
     await m.createAll();
     if (from >= to) return;
+  }
+}
+
+mixin _DatabaseUserMixin on _$Database {
+  late final Future<Set<int>> _verifiedIds = (selectOnly(verified)
+    ..addColumns([verified.userId])).map((e) => e.read(verified.userId)).get().then(HashSet<int>.from);
+
+  /// Check if a user is verified.
+  Future<bool> isVerified(int userId) async {
+    final cache = await _verifiedIds;
+    if (cache.contains(userId)) return true;
+    final verified = await (select(this.verified)
+          ..where((tbl) => tbl.userId.equals(userId))
+          ..limit(1))
+        .getSingleOrNull()
+        .then((value) => value != null);
+    return verified;
+  }
+
+  /// Check if a user is banned.
+  Future<bool> isBanned(int userId) async {
+    final banned =
+        await (select(this.banned)
+              ..where((tbl) => tbl.userId.equals(userId))
+              ..limit(1))
+            .getSingleOrNull();
+    return banned != null;
+  }
+
+  /// Verify a user.
+  Future<void> verifyUser({
+    required int chatId,
+    required int userId,
+    required String name,
+    int? verifiedAt,
+    String? reason,
+  }) async {
+    if ((await _verifiedIds).add(userId)) {
+      // Insert the user into the database if not already verified
+      await batch((batch) {
+        batch
+          ..deleteWhere(banned, (tbl) => tbl.userId.equals(userId))
+          ..insert(
+            verified,
+            VerifiedCompanion.insert(
+              userId: Value<int>(userId),
+              chatId: chatId,
+              verifiedAt: verifiedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+              name: name,
+              reason: Value<String?>.absentIfNull(reason),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      });
+      l.i('Verified user $userId');
+    }
+  }
+
+  /// Verify a users
+  Future<void> verifyUsers(List<({int chatId, int userId, String name, int? verifiedAt, String? reason})> users) async {
+    if (users.isEmpty) return;
+    late final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final toInsert = users
+        .map(
+          (e) => VerifiedCompanion.insert(
+            userId: Value<int>(e.userId),
+            chatId: e.chatId,
+            verifiedAt: now,
+            name: e.name,
+            reason: Value<String?>.absentIfNull(e.reason),
+          ),
+        )
+        .toList(growable: false);
+    final verifiedIds = await _verifiedIds;
+    final length = toInsert.length;
+    for (var i = 0; i < length; i += 500) {
+      final sublist = toInsert.sublist(i, math.min(i + 500, length));
+      try {
+        await batch((batch) {
+          batch
+            ..deleteWhere(banned, (tbl) => tbl.userId.isIn(sublist.map((e) => e.userId.value)))
+            ..insertAll(verified, sublist, mode: InsertMode.insertOrIgnore);
+        });
+        verifiedIds.addAll(sublist.map((e) => e.userId.value));
+        l.i('Verified ${sublist.length} users');
+      } on Object catch (e, st) {
+        l.w('Failed to verify users: $e', st);
+        continue;
+      }
+    }
+  }
+
+  /// Unverify users.
+  Future<int> unverifyUsers(Iterable<int> ids) async {
+    final toDelete = ids.toSet();
+    if (toDelete.isEmpty) return 0;
+    final cache = await _verifiedIds;
+    cache.removeAll(toDelete);
+    return await (delete(verified)..where((tbl) => tbl.userId.isIn(toDelete))).go();
+  }
+
+  /// Ban a user.
+  Future<void> banUser({
+    required int chatId,
+    required int userId,
+    required String name,
+    int? bannedAt,
+    int? expiresAt,
+    String? reason,
+  }) async {
+    (await _verifiedIds).remove(userId);
+    await batch((batch) {
+      batch
+        ..deleteWhere(verified, (tbl) => tbl.userId.equals(userId))
+        ..insert(
+          banned,
+          BannedCompanion.insert(
+            userId: Value<int>(userId),
+            chatId: chatId,
+            bannedAt: bannedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            expiresAt: Value<int?>.absentIfNull(expiresAt),
+            name: name,
+            reason: Value<String?>.absentIfNull(reason),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+    });
+    l.i('Banned user $userId');
   }
 }
 
