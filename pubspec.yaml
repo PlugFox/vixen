@@ -73,6 +73,11 @@ dependencies:
   # Network
   http: ^1.2.2
 
+  # Server
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  stack_trace: ^1.12.1
+
 dev_dependencies:
   # Roadmap generation
   yaml: ^3.1.3

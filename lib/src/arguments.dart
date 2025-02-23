@@ -3,6 +3,7 @@ import 'dart:io' as io;
 
 import 'package:args/args.dart';
 import 'package:l/l.dart' as logger;
+import 'package:vixen/src/constant/constants.dart';
 
 /// Parse arguments
 ArgParser _buildParser() =>
@@ -116,7 +117,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
         chats: HashSet<int>.from(
           table['chats']?.split(',').map((e) => int.tryParse(e.trim())) ?? const Iterable.empty(),
         ),
-        secret: table['secret'] ?? '',
+        secret: table['secret'] ?? (kDebugMode ? Object().hashCode.toRadixString(36) : ''),
       );
     } on FormatException {
       io.stderr

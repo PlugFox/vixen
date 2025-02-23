@@ -6,7 +6,6 @@ import 'dart:io' as io;
 
 import 'package:intl/intl.dart';
 import 'package:l/l.dart';
-import 'package:vixen/src/callback_handler.dart';
 import 'package:vixen/vixen.dart';
 
 /// The main entry point of the bot.
@@ -49,14 +48,17 @@ void main(List<String> args) {
         final captchaQueue = CaptchaQueue(size: 24, length: 4, width: 480, height: 180);
         await captchaQueue.start();
 
-        l.i('Running the bot');
+        final srv = await startServer(database: db, secret: arguments.secret);
+        l.i('Server is running on ${srv.address.address}:${srv.port}');
+
         final lastUpdateId = db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
         bot
           ..addHandler(handler(arguments: arguments, bot: bot, db: db, captchaQueue: captchaQueue))
           ..start();
+        l.i('Bot is running');
 
-        // TODO(plugfox): Server, Healthchecks, Captcha queue, Admin commands, Metrics, Tests
+        // TODO(plugfox): Admin commands, Metrics, Tests
         // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
       },
       (error, stackTrace) {
