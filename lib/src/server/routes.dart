@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:drift/drift.dart';
@@ -96,4 +97,50 @@ Future<Response> $adminDatabase(Request request) async {
         },
       );
   }
+}
+
+Future<Response> $adminUsersVerifiedGet(Request request) async {
+  final db = Dependencies.of(request).database;
+  var ids =
+      await (db.selectOnly(db.verified)..addColumns([db.verified.userId])).map((e) => e.read(db.verified.userId)).get();
+  ids = ids.whereType<int>().toList(growable: false);
+  return Responses.ok(<String, Object?>{'count': ids.length, 'ids': ids});
+}
+
+Future<Response> $adminUsersVerifiedPut(Request request) async {
+  final body = await request.readAsString();
+  final json = jsonDecode(body);
+  final items = json['data'] ?? json['users'] ?? json['verified'] ?? json['items'];
+  if (items is! List<Object?>) return Responses.error(const BadRequestException(detail: 'Invalid request body'));
+  var j = 0;
+  for (var i = 0; i < items.length; i++) {
+    final item = items[i];
+    if (item case <String, Object?>{'chatId': int chatId, 'userId': int userId, 'name': String name}) {
+      final verifiedAt = switch (item['verifiedAt']) {
+        int n => n,
+        _ => null,
+      };
+      final reason = item['reason']?.toString();
+      items[i] = (chatId: chatId, userId: userId, name: name, verifiedAt: verifiedAt, reason: reason);
+      j++;
+    }
+  }
+  items.length = j;
+  final users = items.whereType<({int chatId, int userId, String name, int? verifiedAt, String? reason})>().toList(
+    growable: false,
+  );
+  if (users.isEmpty) return Responses.error(const BadRequestException(detail: 'Missing users'));
+  await Dependencies.of(request).database.verifyUsers(users);
+  return Responses.ok(<String, Object?>{'count': users.length});
+}
+
+Future<Response> $adminUsersVerifiedDelete(Request request) async {
+  final body = await request.readAsString();
+  final json = jsonDecode(body);
+  final items = json['data'] ?? json['ids'] ?? json['users'] ?? json['items'];
+  if (items is! List) return Responses.error(const BadRequestException(detail: 'Invalid request body'));
+  final ids = items.whereType<int>().toSet();
+  if (ids.isEmpty) return Responses.error(const BadRequestException(detail: 'Missing user IDs'));
+  final count = await Dependencies.of(request).database.unverifyUsers(ids);
+  return Responses.ok(<String, Object?>{'count': count});
 }

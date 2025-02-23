@@ -22,18 +22,19 @@ Middleware logPipeline() {
     > 1000_000 => '${(microseconds / 1000_000).toStringAsFixed(1)}s',
     > 1000 => '${(microseconds / 1000).toStringAsFixed(1)}ms',
     _ => '$microsecondsμs',
-  }.padRight(7);
+  };
   return (innerHandler) => (request) {
     final watch = Stopwatch()..start();
     const nbsp = '\u00A0';
     return Future.sync(() => innerHandler(request)).then(
       (response) {
+        final duration = elapsed(watch.elapsedMicroseconds);
         l.vvvvvv(
-          '${elapsed(watch.elapsedMicroseconds)}$nbsp'
+          '${duration.padRight(7)}$nbsp'
           '${request.method.padRight(7)}$nbsp[${response.statusCode}]$nbsp' // 7 - longest standard HTTP method
           '${request.requestedUri.path}${formatQuery(request.requestedUri.query)}',
         );
-        return response;
+        return response.change(headers: <String, Object?>{...response.headers, 'X-Duration': duration});
       },
       onError: (Object error, StackTrace stackTrace) {
         if (error is HijackException) throw error;

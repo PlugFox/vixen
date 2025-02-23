@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_foreach
 import 'dart:collection';
 import 'dart:io' as io;
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart' as ffi;
@@ -231,6 +232,49 @@ mixin _DatabaseUserMixin on _$Database {
       });
       l.i('Verified user $userId');
     }
+  }
+
+  /// Verify a users
+  Future<void> verifyUsers(List<({int chatId, int userId, String name, int? verifiedAt, String? reason})> users) async {
+    if (users.isEmpty) return;
+    late final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final toInsert = users
+        .map(
+          (e) => VerifiedCompanion.insert(
+            userId: Value<int>(e.userId),
+            chatId: e.chatId,
+            verifiedAt: now,
+            name: e.name,
+            reason: Value<String?>.absentIfNull(e.reason),
+          ),
+        )
+        .toList(growable: false);
+    final verifiedIds = await _verifiedIds;
+    final length = toInsert.length;
+    for (var i = 0; i < length; i += 500) {
+      final sublist = toInsert.sublist(i, math.min(i + 500, length));
+      try {
+        await batch((batch) {
+          batch
+            ..deleteWhere(banned, (tbl) => tbl.userId.isIn(sublist.map((e) => e.userId.value)))
+            ..insertAll(verified, sublist, mode: InsertMode.insertOrIgnore);
+        });
+        verifiedIds.addAll(sublist.map((e) => e.userId.value));
+        l.i('Verified ${sublist.length} users');
+      } on Object catch (e, st) {
+        l.w('Failed to verify users: $e', st);
+        continue;
+      }
+    }
+  }
+
+  /// Unverify users.
+  Future<int> unverifyUsers(Iterable<int> ids) async {
+    final toDelete = ids.toSet();
+    if (toDelete.isEmpty) return 0;
+    final verifiedIds = await _verifiedIds;
+    verifiedIds.removeAll(toDelete);
+    return await (delete(verified)..where((tbl) => tbl.userId.isIn(toDelete))).go();
   }
 
   /// Ban a user.

@@ -15,6 +15,9 @@ Future<io.HttpServer> startServer({required Database database, required Argument
         ..get('/admin/logs', $adminLogs)
         ..get('/admin/logs/<id>', $adminLogs)
         ..get('/admin/<ignored|db|database|sqlite|sqlite3>', $adminDatabase)
+        ..get('/admin/users/verified', $adminUsersVerifiedGet)
+        ..put('/admin/users/verified', $adminUsersVerifiedPut)
+        ..delete('/admin/users/verified', $adminUsersVerifiedDelete)
         //..get('/stat', $stat)
         ..all('/<ignored|.*>', $notFound);
 
