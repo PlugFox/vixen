@@ -1,6 +1,7 @@
 data/
 build/
 out/
+
 *.exe
 *.run
 
@@ -12,5 +13,10 @@ out/
 .coverage/
 .github/
 .vscode/
+.temp/
 
+tool/
 test/
+
+Dockerfile
+Makefile
