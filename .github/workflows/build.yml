@@ -65,6 +65,6 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/arm64,linux/amd64,linux/arm/v7
+          platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ env.docker-image }}:latest, ${{ env.docker-image }}:${{ steps.version.outputs.SEM_VERSION }}

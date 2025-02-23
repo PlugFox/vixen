@@ -20,7 +20,11 @@ tool/
 test/
 
 Dockerfile
+docker-compose.yml
+docker-stack.yml
 Makefile
 .gitignore
 .dockerignore
 .packages
+.env
+.env.template
