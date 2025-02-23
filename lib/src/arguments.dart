@@ -49,7 +49,7 @@ ArgParser _buildParser() =>
         abbr: 'v',
         aliases: ['logging', 'logger', 'logs', 'log'],
         mandatory: false,
-        help: 'Verbose mode for output: debug | info | warn | error',
+        help: 'Verbose mode for output: all | debug | info | warn | error',
         defaultsTo: 'warn',
         valueHelp: 'info',
       );
