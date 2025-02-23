@@ -78,14 +78,9 @@ dart-version: ## Show the Dart version
 	@dart --version
 	@which dart
 
+.PHONY: tag
 tag: ## Add a tag to the current commit
 	@dart run tool/tag.dart
-#	@TAG=$$(git describe --tags --abbrev=0) ; \
-#	if [ -z "$$TAG" ]; then \
-#		echo "No tag found" ; \
-#		exit 1 ; \
-#	fi ; \
-#	git tag -a "$$TAG" -m "Release $$TAG"
 
 .PHONY: diff
 diff: ## git diff
