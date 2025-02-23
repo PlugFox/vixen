@@ -139,23 +139,17 @@ Middleware cors([Map<String, String>? headers]) =>
         );
 
 /// Injects a [Map] of dependencies into the request context.
-Middleware injector({required Arguments arguments, required Database database, Map<String, Object?>? dependencies}) =>
+Middleware injector(Dependencies dependencies, {Map<String, Object?>? extra}) =>
     (innerHandler) =>
         (request) => innerHandler(
-          request.change(
-            context: <String, Object?>{
-              ...request.context,
-              ...?dependencies,
-              Dependencies._key: Dependencies._(arguments: arguments, database: database),
-            },
-          ),
+          request.change(context: <String, Object?>{...request.context, ...?extra, Dependencies._key: dependencies}),
         );
 
 @immutable
 final class Dependencies {
-  factory Dependencies.of(Request request) => request.context[_key] as Dependencies;
+  const Dependencies({required this.arguments, required this.database});
 
-  const Dependencies._({required this.arguments, required this.database});
+  factory Dependencies.of(Request request) => request.context[_key] as Dependencies;
 
   static const String _key = '_@DEPENDENCIES';
 

@@ -191,8 +191,14 @@ mixin _DatabaseUserMixin on _$Database {
 
   /// Check if a user is verified.
   Future<bool> isVerified(int userId) async {
-    final verified = await _verifiedIds;
-    return verified.contains(userId);
+    final cache = await _verifiedIds;
+    if (cache.contains(userId)) return true;
+    final verified = await (select(this.verified)
+          ..where((tbl) => tbl.userId.equals(userId))
+          ..limit(1))
+        .getSingleOrNull()
+        .then((value) => value != null);
+    return verified;
   }
 
   /// Check if a user is banned.
@@ -272,8 +278,8 @@ mixin _DatabaseUserMixin on _$Database {
   Future<int> unverifyUsers(Iterable<int> ids) async {
     final toDelete = ids.toSet();
     if (toDelete.isEmpty) return 0;
-    final verifiedIds = await _verifiedIds;
-    verifiedIds.removeAll(toDelete);
+    final cache = await _verifiedIds;
+    cache.removeAll(toDelete);
     return await (delete(verified)..where((tbl) => tbl.userId.isIn(toDelete))).go();
   }
 

@@ -293,10 +293,11 @@ class CaptchaQueue {
               _addToQueue(c);
             case LogMessage log:
               l.log(log);
-            case SendPort sendPort:
-              completer.complete(sendPort);
+            case SendPort port:
+              _sendPort = port;
+              if (!completer.isCompleted) completer.complete(port);
             default:
-              l.w('Unknown message captcha isolate message: $message', StackTrace.current);
+              l.w('Unknown message from captcha isolate: $message', StackTrace.current);
           }
         }, cancelOnError: false);
     _isolate = await Isolate.spawn(
@@ -305,7 +306,7 @@ class CaptchaQueue {
       errorsAreFatal: false,
       debugName: 'Captcha generator',
     );
-    _sendPort = await completer.future;
+    await completer.future;
     _maybeRequest();
   }
 

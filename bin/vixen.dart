@@ -48,8 +48,8 @@ void main(List<String> args) {
         await captchaQueue.start();
         l.i('Captcha queue is running');
 
-        final srv = await startServer(arguments: arguments, database: db);
-        l.i('Server is running on ${srv.address.address}:${srv.port}');
+        await startServer(arguments: arguments, database: db);
+        l.i('Server is running on ${arguments.address}:${arguments.port}');
 
         final lastUpdateId = db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
