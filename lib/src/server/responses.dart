@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:shelf/shelf.dart' as shelf;
+import 'package:vixen/vixen.dart';
 
 /// Statuses
 const ({String ok, String error}) _kStatus = (ok: 'ok', error: 'error');
@@ -18,9 +19,15 @@ final Map<String, String> _headers = <String, String>{
 /// Responses
 sealed class Responses {
   /// Response encoder
-  static final Converter<Map<String, Object?>, List<int>> _responseEncoder = const JsonEncoder()
-      .cast<Map<String, Object?>, String>()
-      .fuse(const Utf8Encoder());
+  static final Converter<Map<String, Object?>, List<int>> _responseEncoder = JsonEncoder(
+    (obj) => switch (obj) {
+      DateTime dt => dt.toUtc().toIso8601String(),
+      Exception e => kDebugMode ? e.toString() : '<Exception>',
+      Error e => kDebugMode ? e.toString() : '<Error>',
+      StackTrace st => kDebugMode ? st.toString() : '<StackTrace>',
+      _ => kDebugMode ? '<${obj.runtimeType}>' : '<Object>',
+    },
+  ).cast<Map<String, Object?>, String>().fuse(const Utf8Encoder());
 
   /// Ok
   static Future<shelf.Response> ok(Object? data, {Map<String, String>? headers}) {
