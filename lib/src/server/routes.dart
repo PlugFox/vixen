@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io' as io;
 
-import 'package:drift/drift.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:vixen/src/server/middlewares.dart';
 import 'package:vixen/src/server/responses.dart';
+import 'package:vixen/vixen.dart';
 
 Response $healthCheck(Request request) =>
     Response.ok('{"data": {"status": "ok"}}', headers: <String, String>{'Content-Type': io.ContentType.json.value});
@@ -20,6 +20,20 @@ Future<Response> $notFound(Request request) => Responses.error(
     },
   ),
 );
+
+Future<Response> $about(Request request) => Responses.ok(<String, Object?>{
+  'name': Pubspec.name,
+  'description': Pubspec.description,
+  'version': Pubspec.version.representation,
+  'timestamp': Pubspec.timestamp,
+  'repository': Pubspec.repository,
+  'timezone': DateTime.now().timeZoneName,
+  'time': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+  'locale': io.Platform.localeName,
+  'platform': io.Platform.operatingSystem,
+  'dart': io.Platform.version,
+  'cpu': io.Platform.numberOfProcessors,
+});
 
 Future<Response> $adminLogs(Request request) async {
   final $id = request.params['id'];

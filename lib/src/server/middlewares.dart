@@ -21,7 +21,7 @@ Middleware logPipeline() {
     > 60_000_000 => '${(microseconds / 60_000_000).toStringAsFixed(1)}m',
     > 1000_000 => '${(microseconds / 1000_000).toStringAsFixed(1)}s',
     > 1000 => '${(microseconds / 1000).toStringAsFixed(1)}ms',
-    _ => '$microsecondsμs',
+    _ => '${microseconds}us',
   };
   return (innerHandler) => (request) {
     final watch = Stopwatch()..start();

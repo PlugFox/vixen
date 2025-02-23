@@ -14,6 +14,7 @@ Future<void> startServer({required Database database, required Arguments argumen
   final $router =
       Router(notFoundHandler: $notFound)
         ..get('/<ignored|health|healthz|status>', $healthCheck)
+        ..get('/<ignored|about|version>', $about)
         ..get('/admin/logs', $adminLogs)
         ..get('/admin/logs/<id>', $adminLogs)
         ..get('/admin/<ignored|db|database|sqlite|sqlite3>', $adminDatabase)
