@@ -39,7 +39,7 @@ issue_tracker: https://github.com/plugfox/vixen/issues
 # ==============================================================================
 
 executables:
-  - bin/main.dart
+  - bin/vixen.dart
 
 # ==============================================================================
 # DEPENDENCIES

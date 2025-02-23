@@ -4,7 +4,7 @@
     {
       "name": "Run (debug)",
       "type": "dart",
-      "program": "bin/main.dart",
+      "program": "bin/vixen.dart",
       "request": "launch",
       "flutterMode": "debug",
       "cwd": "${workspaceFolder}",

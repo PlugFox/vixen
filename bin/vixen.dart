@@ -16,12 +16,12 @@ import 'package:vixen/vixen.dart';
 ///
 /// How to run:
 /// ```shell
-/// dart bin/main.dart --token <bot_token>
+/// dart bin/vixen.dart --token <bot_token>
 /// ```
 ///
 /// How to compile:
 /// ```shell
-/// dart compile exe bin/main.dart -o bin/main.run
+/// dart compile exe bin/vixen.dart -o bin/main.run
 /// bin/main.run --token <bot_token>
 /// ```
 void main(List<String> args) {

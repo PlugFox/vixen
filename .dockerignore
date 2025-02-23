@@ -1,0 +1,16 @@
+data/
+build/
+out/
+*.exe
+*.run
+
+*.db
+*.sqlite
+*.sqlite3
+
+.dart_tool/
+.coverage/
+.github/
+.vscode/
+
+test/

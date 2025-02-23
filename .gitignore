@@ -86,3 +86,9 @@ example/out/
 
 # Data
 data/
+
+# Build output
+out/
+build/
+*.exe
+*.run
