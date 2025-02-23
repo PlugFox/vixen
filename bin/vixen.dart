@@ -35,6 +35,13 @@ void main(List<String> args) {
     io.exit(2);
   }
 
+  // Handle the shutdown event
+  l.i('Press [Ctrl+C] to exit');
+  shutdownHandler(() async {
+    l.i('Shutting down');
+    io.exit(0);
+  }).ignore();
+
   l.capture(
     () => runZonedGuarded<void>(
       () async {
@@ -189,4 +196,40 @@ void Function(int updateId, Map<String, Object?> update) handler({
       debugger(); // Set a breakpoint here
     }
   };
+}
+
+/// Handles the command line arguments.
+Future<T?> shutdownHandler<T extends Object?>([final Future<T> Function()? onShutdown]) {
+  //StreamSubscription<String>? userKeySub;
+  StreamSubscription<io.ProcessSignal>? sigIntSub;
+  StreamSubscription<io.ProcessSignal>? sigTermSub;
+  final shutdownCompleter = Completer<T>.sync();
+  var catchShutdownEvent = false;
+  {
+    Future<void> signalHandler(io.ProcessSignal signal) async {
+      if (catchShutdownEvent) return;
+      catchShutdownEvent = true;
+      l.i('Received signal "$signal" - closing');
+      T? result;
+      try {
+        //userKeySub?.cancel();
+        sigIntSub?.cancel().ignore();
+        sigTermSub?.cancel().ignore();
+        result = await onShutdown?.call().catchError((Object error, StackTrace stackTrace) {
+          l.e('Error during shutdown | $error', stackTrace);
+          io.exit(2);
+        });
+      } finally {
+        if (!shutdownCompleter.isCompleted) shutdownCompleter.complete(result);
+      }
+    }
+
+    sigIntSub = io.ProcessSignal.sigint.watch().listen(signalHandler, cancelOnError: false);
+
+    // SIGTERM is not supported on Windows.
+    // Attempting to register a SIGTERM handler raises an exception.
+    if (!io.Platform.isWindows)
+      sigTermSub = io.ProcessSignal.sigterm.watch().listen(signalHandler, cancelOnError: false);
+  }
+  return shutdownCompleter.future;
 }

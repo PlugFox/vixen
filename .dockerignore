@@ -9,6 +9,7 @@ out/
 *.sqlite
 *.sqlite3
 
+.git/
 .dart_tool/
 .coverage/
 .github/
@@ -20,3 +21,6 @@ test/
 
 Dockerfile
 Makefile
+.gitignore
+.dockerignore
+.packages

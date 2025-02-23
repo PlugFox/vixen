@@ -41,8 +41,8 @@ ArgParser _buildParser() =>
         aliases: ['db', 'sqlite', 'sql', 'file', 'path'],
         mandatory: false,
         help: 'Path to the SQLite database file',
-        defaultsTo: 'data/db.sqlite3',
-        valueHelp: 'data/db.sqlite3',
+        defaultsTo: 'data/vixen.db',
+        valueHelp: 'data/vixen.db',
       )
       ..addOption(
         'address',
@@ -135,7 +135,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           table['chats']?.split(',').map((e) => int.tryParse(e.trim())) ?? const Iterable.empty(),
         ),
         secret: table['secret'] ?? (kDebugMode ? Object().hashCode.toRadixString(36) : ''),
-        database: table['database'] ?? 'data/db.sqlite3',
+        database: table['database'] ?? 'data/vixen.db',
         address: table['address'] ?? io.InternetAddress.anyIPv4,
         port: int.tryParse(table['port'] ?? '8080') ?? 8080,
       );

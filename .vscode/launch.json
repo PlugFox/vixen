@@ -26,6 +26,18 @@
         "CONFIG_VERBOSE": "debug",
       }
     },
+    {
+      "name": "Help",
+      "type": "dart",
+      "program": "bin/vixen.dart",
+      "request": "launch",
+      "flutterMode": "debug",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--help"
+      ],
+      "env": {}
+    },
     // https://pub.dev/packages/test
     {
       "name": "Test (VM)",
