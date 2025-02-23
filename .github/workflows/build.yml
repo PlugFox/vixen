@@ -68,3 +68,16 @@ jobs:
           platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ env.docker-image }}:latest, ${{ env.docker-image }}:${{ steps.version.outputs.SEM_VERSION }}
+
+  deploy:
+    name: "🚢 Deploy Vixen bot"
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - name: Trigger Portainer Webhook
+        run: |
+          echo "Trigger Portainer Webhook to update the service"
+          curl -X POST "$PORTAINER_WEBHOOK_URL"
+        env:
+          PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
