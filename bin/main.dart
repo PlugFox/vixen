@@ -39,7 +39,7 @@ void main(List<String> args) {
     () => runZonedGuarded<void>(
       () async {
         l.i('Preparing database');
-        final db = Database.lazy(); // Open the database
+        final db = Database.lazy(path: arguments.database); // Open the database
         await db.customStatement('VACUUM;'); // Compact the database
         collectLogs(db, logsBuffer); // Store logs in the database every 5 seconds
         await db.refresh();
@@ -48,7 +48,7 @@ void main(List<String> args) {
         final captchaQueue = CaptchaQueue(size: 24, length: 4, width: 480, height: 180);
         await captchaQueue.start();
 
-        final srv = await startServer(database: db, secret: arguments.secret);
+        final srv = await startServer(arguments: arguments, database: db);
         l.i('Server is running on ${srv.address.address}:${srv.port}');
 
         final lastUpdateId = db.getKey<int>(updateIdKey);

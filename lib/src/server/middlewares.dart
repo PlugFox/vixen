@@ -5,6 +5,7 @@ import 'package:l/l.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 import 'package:stack_trace/stack_trace.dart' as st;
+import 'package:vixen/src/arguments.dart';
 import 'package:vixen/src/database.dart';
 import 'package:vixen/src/server/responses.dart';
 
@@ -14,7 +15,40 @@ final Converter<Map<String, Object?>, String> _responseEncoder =
 
 /// Middleware which prints the time of the request, the elapsed time for the
 /// inner handlers, the response's status code and the request URI.
-Middleware logPipeline() => logRequests(logger: (msg, isError) => isError ? l.w(msg) : l.d(msg));
+Middleware logPipeline() {
+  String formatQuery(String query) => query == '' ? '' : '?$query';
+  String elapsed(int microseconds) => switch (microseconds) {
+    > 60_000_000 => '${(microseconds / 60_000_000).toStringAsFixed(1)}m',
+    > 1000_000 => '${(microseconds / 1000_000).toStringAsFixed(1)}s',
+    > 1000 => '${(microseconds / 1000).toStringAsFixed(1)}ms',
+    _ => '$microsecondsμs',
+  }.padRight(7);
+  return (innerHandler) => (request) {
+    final watch = Stopwatch()..start();
+    const nbsp = '\u00A0';
+    return Future.sync(() => innerHandler(request)).then(
+      (response) {
+        l.vvvvvv(
+          '${elapsed(watch.elapsedMicroseconds)}$nbsp'
+          '${request.method.padRight(7)}$nbsp[${response.statusCode}]$nbsp' // 7 - longest standard HTTP method
+          '${request.requestedUri.path}${formatQuery(request.requestedUri.query)}',
+        );
+        return response;
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (error is HijackException) throw error;
+        l.w(
+          '${elapsed(watch.elapsedMicroseconds)}$nbsp'
+          '${request.method.padRight(7)}$nbsp[ERR]$nbsp' // 7 - longest standard HTTP method
+          '${request.requestedUri.path}${formatQuery(request.requestedUri.query)}',
+          stackTrace,
+          <String, Object?>{'error': error.toString()},
+        );
+        throw error; // ignore: only_throw_errors
+      },
+    );
+  };
+}
 
 /// Injects a [token] to the request context if
 /// 'Authorization: Bearer token' is present in the request headers.
@@ -104,14 +138,14 @@ Middleware cors([Map<String, String>? headers]) =>
         );
 
 /// Injects a [Map] of dependencies into the request context.
-Middleware injector({required Database database, Map<String, Object?>? dependencies}) =>
+Middleware injector({required Arguments arguments, required Database database, Map<String, Object?>? dependencies}) =>
     (innerHandler) =>
         (request) => innerHandler(
           request.change(
             context: <String, Object?>{
               ...request.context,
               ...?dependencies,
-              Dependencies._key: Dependencies._(database: database),
+              Dependencies._key: Dependencies._(arguments: arguments, database: database),
             },
           ),
         );
@@ -120,12 +154,15 @@ Middleware injector({required Database database, Map<String, Object?>? dependenc
 final class Dependencies {
   factory Dependencies.of(Request request) => request.context[_key] as Dependencies;
 
-  const Dependencies._({required this.database});
+  const Dependencies._({required this.arguments, required this.database});
 
   static const String _key = '_@DEPENDENCIES';
 
   // ignore: unused_element
   void _inject(Request request) => request.change(context: <String, Object?>{...request.context, _key: this});
+
+  /// Startup arguments.
+  final Arguments arguments;
 
   /// SQLite database.
   final Database database;

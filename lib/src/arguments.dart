@@ -118,6 +118,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           table['chats']?.split(',').map((e) => int.tryParse(e.trim())) ?? const Iterable.empty(),
         ),
         secret: table['secret'] ?? (kDebugMode ? Object().hashCode.toRadixString(36) : ''),
+        database: table['database'] ?? 'data/db.sqlite3',
       );
     } on FormatException {
       io.stderr
@@ -143,6 +144,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     required this.chats,
     required this.token,
     required this.secret,
+    required this.database,
     required Map<String, String> arguments,
   }) : _arguments = arguments;
 
@@ -157,6 +159,9 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// Secret admin API key
   final String secret;
+
+  /// Path to the SQLite database file
+  final String database;
 
   /// Arguments
   final Map<String, String> _arguments;
