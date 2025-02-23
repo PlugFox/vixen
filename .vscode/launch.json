@@ -61,6 +61,16 @@
         "--concurrency=12"
       ],
       "args": []
-    }
+    },
+    {
+      "name": "Tag - make release",
+      "type": "dart",
+      "program": "tool/tag.dart",
+      "request": "launch",
+      "flutterMode": "release",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "env": {}
+    },
   ]
 }
