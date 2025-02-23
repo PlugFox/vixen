@@ -96,7 +96,7 @@ jobs:
               test/unit_test.dart
 
       - name: 🎁 Setup LCOV
-        timeout-minutes: 1
+        timeout-minutes: 5
         uses: hrishikesh-kadam/setup-lcov@v1
 
       #- name: 🔍 Check coverage
