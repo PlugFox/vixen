@@ -58,7 +58,7 @@ void main(List<String> args) {
           ..start();
         l.i('Bot is running');
 
-        // TODO(plugfox): Admin commands, Metrics, Tests
+        // TODO(plugfox): Metrics, Tests
         // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
       },
       (error, stackTrace) {
