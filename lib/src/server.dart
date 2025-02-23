@@ -12,17 +12,24 @@ Future<void> startServer({required Database database, required Arguments argumen
   final dependencies = Dependencies(database: database, arguments: arguments);
 
   final $router =
-      Router(notFoundHandler: $notFound)
-        ..get('/<ignored|health|healthz|status>', $healthCheck)
-        ..get('/<ignored|about|version>', $about)
-        ..get('/admin/logs', $adminLogs)
-        ..get('/admin/logs/<id>', $adminLogs)
-        ..get('/admin/<ignored|db|database|sqlite|sqlite3>', $adminDatabase)
-        ..get('/admin/users/verified', $adminUsersVerifiedGet)
-        ..put('/admin/users/verified', $adminUsersVerifiedPut)
-        ..delete('/admin/users/verified', $adminUsersVerifiedDelete)
+      Router(notFoundHandler: $ALL$NotFound)
+        // --- Meta --- //
+        ..get('/<ignored|health|healthz|status>', $GET$HealthCheck)
+        ..get('/<ignored|about|version>', $GET$About)
+        // --- Database --- //
+        ..get('/admin/<ignored|db|database|sqlite|sqlite3>', $GET$Admin$Database)
+        // --- Logs --- //
+        ..get('/admin/logs', $GET$Admin$Logs)
+        ..get('/admin/logs/<id>', $GET$Admin$Logs)
+        // --- Users --- //
+        ..get('/admin/users/verified', $GET$Admin$Users$Verified)
+        ..put('/admin/users/verified', $PUT$Admin$Users$Verified)
+        ..delete('/admin/users/verified', $DELETE$Admin$Users$Verified)
+        // --- Messages --- //
+        ..get('/admin/messages/deleted', $GET$Admin$Messages$Deleted)
+        // --- Not found --- //
         //..get('/stat', $stat)
-        ..all('/<ignored|.*>', $notFound);
+        ..all('/<ignored|.*>', $ALL$NotFound);
 
   final pipeline = const Pipeline()
       .addMiddleware(handleErrors())
