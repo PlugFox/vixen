@@ -1,0 +1,39 @@
+name: Create GitHub Release
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+" # v1.2.3
+
+jobs:
+  release:
+    name: Create GitHub Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if release exists
+        id: check_release
+        run: |
+          RELEASE=$(gh release view ${{ github.ref_name }} --json tagName -q .tagName || echo "not_found")
+          if [[ "$RELEASE" == "not_found" ]]; then
+            echo "CREATE_RELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "CREATE_RELEASE=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.CREATE_RELEASE == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: "Automated release for version ${{ github.ref_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
