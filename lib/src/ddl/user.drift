@@ -40,3 +40,24 @@ CREATE TABLE IF NOT EXISTS banned (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS banned_chat_id_idx ON banned (chat_id);
+
+-- Messages sent by users
+CREATE TABLE IF NOT EXISTS message (
+    -- ID of the message the user sent
+    message_id INTEGER NOT NULL PRIMARY KEY,
+
+    -- Chat ID
+    chat_id INTEGER NOT NULL,
+
+    -- User ID
+    user_id INTEGER NOT NULL,
+
+    -- Date of the message
+    date INTEGER NOT NULL,
+
+    -- Type of activity / message
+    type TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS activity_chat_id_idx ON message (chat_id);
+CREATE INDEX IF NOT EXISTS activity_user_id_idx ON message (user_id);

@@ -1,6 +1,6 @@
 -- Captcha messages sent to users
 CREATE TABLE captcha_message (
-    message_id INTEGER PRIMARY KEY, -- Primary key with auto-increment
+    message_id INTEGER NOT NULL PRIMARY KEY, -- Primary key with auto-increment
     user_id INTEGER NOT NULL, -- Identifier for the user
     chat_id INTEGER NOT NULL, -- Identifier for the chat
     caption TEXT NOT NULL, -- Text of the message

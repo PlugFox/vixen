@@ -60,6 +60,7 @@ dependencies:
   async: ^2.13.0
   convert: ^3.1.2
   intl: ^0.20.2
+  stack_trace: ^1.12.1
 
   # Image
   image: ^4.5.3
@@ -76,7 +77,6 @@ dependencies:
   # Server
   shelf: ^1.4.2
   shelf_router: ^1.1.4
-  stack_trace: ^1.12.1
 
 dev_dependencies:
   # Roadmap generation

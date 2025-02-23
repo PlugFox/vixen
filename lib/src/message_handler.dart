@@ -93,7 +93,7 @@ class MessageHandler {
   void call(Map<String, Object?> message) {
     if (message case <String, Object?>{
       'message_id': int messageId,
-      'date': int _, // date
+      'date': int date,
       'from': Map<String, Object?> from,
       'chat': Map<String, Object?> chat,
     }) {
@@ -102,7 +102,23 @@ class MessageHandler {
       if (!_chats.contains(chatId)) return;
       l.d('Received message from $userId in chat $chatId');
       Future<void>(() async {
-        if (await _db.isVerified(userId)) return;
+        if (await _db.isVerified(userId)) {
+          // User is verified - update user activity and proceed
+          _db
+              .into(_db.message)
+              .insert(
+                MessageCompanion.insert(
+                  messageId: Value<int>(messageId),
+                  userId: userId,
+                  chatId: chatId,
+                  date: date,
+                  type: Bot.getMessageType(message),
+                ),
+                mode: InsertMode.insertOrReplace,
+              )
+              .ignore();
+          return;
+        }
 
         _scheduleDeleteMessage(chatId, messageId); // Delete the message because the user is not verified
 
@@ -117,6 +133,7 @@ class MessageHandler {
               .ignore();
           return;
         }
+
         // Check, maybe the user is already has a captcha
         {
           final captcha =
@@ -129,18 +146,17 @@ class MessageHandler {
         }
 
         final captcha = await _captchaQueue.next();
-        final username = Bot.escapeMarkdownV2(from['username']?.toString() ?? '');
-        final name = Bot.escapeMarkdownV2('${from['first_name'] ?? ''} ${from['last_name'] ?? ''}'.trim());
+        final name = switch (Bot.formatUsername(from)) {
+          (name: _, escaped: String escaped, username: false) => escaped,
+          (name: _, escaped: String escaped, username: true) => '@$escaped',
+        };
         final String caption;
         {
           // Generate the caption for the message
-          final captionBuffer = StringBuffer();
-          if (name.isNotEmpty) {
-            captionBuffer.writeln('👋 Hello, *[$name](tg://user?id=$userId)*\\!');
-          } else if (username.isNotEmpty == true) {
-            captionBuffer.writeln('👋 Hello, *@$username*\\!');
-          }
-          captionBuffer.writeln('\nPlease solve the _following captcha_ to continue chatting\\.');
+          final captionBuffer =
+              StringBuffer()
+                ..writeln('👋 Hello, *[$name](tg://user?id=$userId)*\\!')
+                ..writeln('\nPlease solve the _following captcha_ to continue chatting\\.');
           //captionBuffer.writeln(captcha.text);
           caption = captionBuffer.toString();
         }

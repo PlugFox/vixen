@@ -45,6 +45,62 @@ class Bot {
     return buffer.toString();
   }
 
+  /// Format a username from a user object.
+  /// [name] - The name of the user if available otherwise the username.
+  /// [escaped] - The escaped name of the user.
+  /// [username] - Whether the name is a username.
+  static ({String name, String escaped, bool username}) formatUsername(Map<String, Object?> user) {
+    final fullName =
+        switch ((user['first_name'], user['last_name'])) {
+          ('', '') || (null, null) => '',
+          (String first, '') || (String first, null) => first,
+          ('', String second) || (null, String second) => second,
+          (String first, String second) => '$first $second',
+          _ => '',
+        }.trim();
+    final String name;
+    final bool username;
+    if (fullName.isNotEmpty) {
+      name = fullName;
+      username = false;
+    } else if (user['username'] case String value when value.isNotEmpty) {
+      name = value;
+      username = true;
+    } else {
+      name = 'Unknown';
+      username = false;
+    }
+    final escaped = escapeMarkdownV2(name);
+    return (name: name, escaped: escaped, username: username);
+  }
+
+  /// Get the type of a message.
+  static String getMessageType(Map<String, Object?> message) {
+    const types = <String>{
+      'text',
+      'photo',
+      'video',
+      'document',
+      'audio',
+      'voice',
+      'sticker',
+      'animation',
+      'video_note',
+      'contact',
+      'location',
+      'venue',
+      'poll',
+      'dice',
+      'game',
+      'forward_origin',
+      'story',
+      'invoice',
+      'successful_payment',
+    };
+    for (final type in types) if (message.containsKey(type)) return type;
+    return 'unknown';
+  }
+
   /// Add a handler to be called when an update is received.
   void addHandler(OnUpdateHandler handler) {
     _handlers.add(handler);
