@@ -49,7 +49,9 @@ class Bot {
   /// [name] - The name of the user if available otherwise the username.
   /// [escaped] - The escaped name of the user.
   /// [username] - Whether the name is a username.
-  static ({String name, String escaped, bool username}) formatUsername(Map<String, Object?> user) {
+  static ({String? name, String? username, String? $name, String? $username}) formatUsername(
+    Map<String, Object?> user,
+  ) {
     final fullName =
         switch ((user['first_name'], user['last_name'])) {
           ('', '') || (null, null) => '',
@@ -58,20 +60,14 @@ class Bot {
           (String first, String second) => '$first $second',
           _ => '',
         }.trim();
-    final String name;
-    final bool username;
-    if (fullName.isNotEmpty) {
-      name = fullName;
-      username = false;
-    } else if (user['username'] case String value when value.isNotEmpty) {
-      name = value;
-      username = true;
-    } else {
-      name = 'Unknown';
-      username = false;
-    }
-    final escaped = escapeMarkdownV2(name);
-    return (name: name, escaped: escaped, username: username);
+    final name = fullName.isEmpty ? null : fullName;
+    final username = switch (user['username']) {
+      String value when value.isNotEmpty => value,
+      _ => null,
+    };
+    final $name = name != null ? escapeMarkdownV2(name) : null;
+    final $username = username != null ? escapeMarkdownV2(username) : null;
+    return (name: name, username: username, $name: $name, $username: $username);
   }
 
   /// Get the type of a message.

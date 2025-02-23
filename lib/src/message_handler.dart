@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:l/l.dart';
 import 'package:vixen/src/bot.dart';
@@ -57,19 +56,20 @@ class MessageHandler {
 
   // --- Delete messages --- //
 
-  final Map<int, List<int>> _toDelete = <int, List<int>>{};
+  final Map<int, List<DeletedMessageCompanion>> _toDelete = <int, List<DeletedMessageCompanion>>{};
   bool _toDeleteScheduled = false;
 
   /// Delete messages in the chats.
   void _deleteMessages() {
     _toDeleteScheduled = false;
-    for (final MapEntry(key: int chat, value: List<int> ids) in _toDelete.entries) {
-      if (ids.isEmpty) continue;
-      final messages = HashSet<int>.of(ids);
-      ids.clear();
+    for (final MapEntry(key: int chat, value: List<DeletedMessageCompanion> list) in _toDelete.entries) {
+      if (list.isEmpty) continue;
+      final messages = list.toList(growable: false);
+      list.clear();
       Future<void>(() async {
         try {
-          _bot.deleteMessages(chat, messages).ignore();
+          _bot.deleteMessages(chat, messages.map((e) => e.messageId.value).toSet()).ignore();
+          _db.batch((batch) => batch.insertAllOnConflictUpdate(_db.deletedMessage, messages)).ignore();
           l.d('Deleted ${messages.length} messages in chat $chat');
         } on Object catch (e, s) {
           l.w('Failed to delete ${messages.length} messages in chat $chat: $e', s);
@@ -79,8 +79,26 @@ class MessageHandler {
   }
 
   /// Schedule a message to be deleted.
-  void _scheduleDeleteMessage(int chatId, int messageId) {
-    _toDelete.putIfAbsent(chatId, () => <int>[]).add(messageId);
+  void _scheduleDeleteMessage({
+    required int messageId,
+    required int chatId,
+    required int userId,
+    required int date,
+    required String username,
+    required String type,
+  }) {
+    _toDelete
+        .putIfAbsent(chatId, () => <DeletedMessageCompanion>[])
+        .add(
+          DeletedMessageCompanion.insert(
+            messageId: Value<int>(messageId),
+            chatId: chatId,
+            userId: userId,
+            date: date,
+            username: username,
+            type: type,
+          ),
+        );
     if (_toDeleteScheduled) return;
     // Delay to allow for more messages to be added to the list and batch delete them
     _toDeleteScheduled = true;
@@ -101,26 +119,39 @@ class MessageHandler {
       if (userId is! int || chatId is! int) return;
       if (!_chats.contains(chatId)) return;
       l.d('Received message from $userId in chat $chatId');
+      final type = Bot.getMessageType(message);
+      final name = Bot.formatUsername(from);
+
       Future<void>(() async {
         if (await _db.isVerified(userId)) {
           // User is verified - update user activity and proceed
           _db
-              .into(_db.message)
+              .into(_db.allowedMessage)
               .insert(
-                MessageCompanion.insert(
+                AllowedMessageCompanion.insert(
                   messageId: Value<int>(messageId),
                   userId: userId,
                   chatId: chatId,
                   date: date,
-                  type: Bot.getMessageType(message),
+                  username: name.name ?? name.username ?? 'Unknown',
+                  type: type,
                 ),
                 mode: InsertMode.insertOrReplace,
               )
               .ignore();
+          l.d('User $userId is verified, allowed message $messageId in chat $chatId');
           return;
         }
 
-        _scheduleDeleteMessage(chatId, messageId); // Delete the message because the user is not verified
+        // Delete the message because the user is not verified
+        _scheduleDeleteMessage(
+          messageId: messageId,
+          chatId: chatId,
+          userId: userId,
+          date: date,
+          username: name.name ?? name.username ?? 'Unknown',
+          type: type,
+        );
 
         if (await _db.isBanned(userId)) {
           // Ban the user for additional 7 days
@@ -145,17 +176,18 @@ class MessageHandler {
           if (captcha != null) return;
         }
 
-        final captcha = await _captchaQueue.next();
-        final name = switch (Bot.formatUsername(from)) {
-          (name: _, escaped: String escaped, username: false) => escaped,
-          (name: _, escaped: String escaped, username: true) => '@$escaped',
+        final mention = switch (name) {
+          (name: _, $name: String v, username: _, $username: _) when v.isNotEmpty => '[$v](tg://user?id=$userId)',
+          (name: _, $name: _, username: _, $username: String v) when v.isNotEmpty => '[@$v](tg://user?id=$userId)',
+          _ => '[Unknown](tg://user?id=$userId)',
         };
+        final captcha = await _captchaQueue.next();
         final String caption;
         {
           // Generate the caption for the message
           final captionBuffer =
               StringBuffer()
-                ..writeln('👋 Hello, *[$name](tg://user?id=$userId)*\\!')
+                ..writeln('👋 Hello, *$mention*\\!')
                 ..writeln('\nPlease solve the _following captcha_ to continue chatting\\.');
           //captionBuffer.writeln(captcha.text);
           caption = captionBuffer.toString();

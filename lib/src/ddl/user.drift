@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS banned (
 
 CREATE INDEX IF NOT EXISTS banned_chat_id_idx ON banned (chat_id);
 
--- Messages sent by users
-CREATE TABLE IF NOT EXISTS message (
+-- Deleted messages
+CREATE TABLE IF NOT EXISTS deleted_message (
     -- ID of the message the user sent
     message_id INTEGER NOT NULL PRIMARY KEY,
 
@@ -55,9 +55,38 @@ CREATE TABLE IF NOT EXISTS message (
     -- Date of the message
     date INTEGER NOT NULL,
 
+    -- User name
+    username TEXT NOT NULL,
+
     -- Type of activity / message
     type TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS activity_chat_id_idx ON message (chat_id);
-CREATE INDEX IF NOT EXISTS activity_user_id_idx ON message (user_id);
+CREATE INDEX IF NOT EXISTS deleted_message_chat_id_idx ON deleted_message (chat_id);
+CREATE INDEX IF NOT EXISTS deleted_message_user_id_idx ON deleted_message (user_id);
+CREATE INDEX IF NOT EXISTS deleted_message_date_idx ON deleted_message (date);
+
+-- Messages sent by users
+CREATE TABLE IF NOT EXISTS allowed_message (
+    -- ID of the message the user sent
+    message_id INTEGER NOT NULL PRIMARY KEY,
+
+    -- Chat ID
+    chat_id INTEGER NOT NULL,
+
+    -- User ID
+    user_id INTEGER NOT NULL,
+
+    -- Date of the message
+    date INTEGER NOT NULL,
+
+    -- User name
+    username TEXT NOT NULL,
+
+    -- Type of activity / message
+    type TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS allowed_message_chat_id_idx ON allowed_message (chat_id);
+CREATE INDEX IF NOT EXISTS allowed_message_user_id_idx ON allowed_message (user_id);
+CREATE INDEX IF NOT EXISTS allowed_message_date_idx ON allowed_message (date);
