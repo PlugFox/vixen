@@ -8,12 +8,7 @@ import 'package:vixen/src/database.dart';
 import 'package:vixen/src/server/middlewares.dart';
 import 'package:vixen/src/server/routes.dart';
 
-Future<io.HttpServer> startServer({
-  required Database database,
-  required Arguments arguments,
-  Object? address,
-  int? port,
-}) async {
+Future<io.HttpServer> startServer({required Database database, required Arguments arguments}) async {
   final $router =
       Router(notFoundHandler: $notFound)
         ..get('/<ignored|health|healthz|status>', $healthCheck)
@@ -33,8 +28,8 @@ Future<io.HttpServer> startServer({
 
   return await shelf_io.serve(
     pipeline,
-    address ?? io.InternetAddress.anyIPv4,
-    port ?? 8080,
+    arguments.address,
+    arguments.port,
     poweredByHeader: 'Vixen Bot',
     shared: false,
     backlog: 64,

@@ -37,12 +37,29 @@ ArgParser _buildParser() =>
       /* ..addSeparator('') */
       ..addOption(
         'database',
-        abbr: 'p',
+        abbr: 'd',
         aliases: ['db', 'sqlite', 'sql', 'file', 'path'],
         mandatory: false,
         help: 'Path to the SQLite database file',
         defaultsTo: 'data/db.sqlite3',
         valueHelp: 'data/db.sqlite3',
+      )
+      ..addOption(
+        'address',
+        abbr: 'a',
+        aliases: ['host', 'server', 'ip'],
+        mandatory: false,
+        help: 'Address to bind the server to',
+        defaultsTo: '0.0.0.0',
+        valueHelp: '0.0.0.0',
+      )
+      ..addOption(
+        'port',
+        abbr: 'p',
+        mandatory: false,
+        help: 'Port to bind the server to',
+        defaultsTo: '8080',
+        valueHelp: '8080',
       )
       ..addOption(
         'verbose',
@@ -119,6 +136,8 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
         ),
         secret: table['secret'] ?? (kDebugMode ? Object().hashCode.toRadixString(36) : ''),
         database: table['database'] ?? 'data/db.sqlite3',
+        address: table['address'] ?? io.InternetAddress.anyIPv4,
+        port: int.tryParse(table['port'] ?? '8080') ?? 8080,
       );
     } on FormatException {
       io.stderr
@@ -145,6 +164,8 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     required this.token,
     required this.secret,
     required this.database,
+    required this.address,
+    required this.port,
     required Map<String, String> arguments,
   }) : _arguments = arguments;
 
@@ -162,6 +183,12 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// Path to the SQLite database file
   final String database;
+
+  /// Address to bind the server to
+  final Object address;
+
+  /// Port to bind the server to
+  final int port;
 
   /// Arguments
   final Map<String, String> _arguments;
