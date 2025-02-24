@@ -1,10 +1,13 @@
+import 'dart:isolate';
+
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-/// Basic spam detection algorithm for text messages
+/// Optimized spam detection algorithm with N-grams and Set-based spam phrase lookup
 abstract final class AntiSpam {
   AntiSpam._();
 
-  // Common spam phrases and patterns
+  /// Spam phrases stored in a Set for O(1) lookup
   @visibleForTesting
   static const Set<String> spamPhrases = <String>{
     // English spam phrases
@@ -13,8 +16,6 @@ abstract final class AntiSpam {
     'fast cash',
     'lose weight',
     'increase sales',
-    'sale',
-    'offer',
     'earn money',
     'details in dm',
     'details in pm',
@@ -29,17 +30,13 @@ abstract final class AntiSpam {
     'limited time',
     'act now',
     'best price',
-    'discount',
     'free offer',
     'guarantee',
     'no obligation',
-    'winner',
 
     // Срочность и ограниченность
-    'срочно',
     'только сегодня',
     'количество ограничено',
-    'спешите',
     'осталось немного',
     'последняя возможность',
     'успей купить',
@@ -47,6 +44,7 @@ abstract final class AntiSpam {
     'не упустите шанс',
 
     // Финансы и заработок
+    'zarabotok',
     'быстрый заработок',
     'пассивный доход',
     'заработок в интернете',
@@ -62,30 +60,12 @@ abstract final class AntiSpam {
     'бизнес под ключ',
 
     // Скидки и цены
-    'скидка',
-    'распродажа',
-    'акция',
-    'бесплатно',
-    'даром',
     'супер цена',
     'лучшая цена',
     'выгодное предложение',
-    'экономия',
-    'дешево',
     'без переплат',
     'специальное предложение',
     'уникальное предложение',
-
-    // Преувеличения
-    'самый лучший',
-    'невероятно',
-    'потрясающе',
-    'революционный',
-    'эксклюзивный',
-    'инновационный',
-    'сенсация',
-    'шок',
-    'взрыв продаж',
 
     // Здоровье и красота
     'похудение',
@@ -102,20 +82,13 @@ abstract final class AntiSpam {
     'купить сейчас',
     'закажи сейчас',
     'звоните прямо сейчас',
-    'кликните здесь',
     'перейдите по ссылке',
-    'регистрируйся',
-    'жми',
-    'торопись',
 
     // Гарантии и обещания
     'гарантия результата',
     'гарантированный доход',
     'стопроцентная гарантия',
     'без риска',
-    'проверено',
-    'безопасно',
-    'надежно',
 
     // Инвестиции и криптовалюта
     'инвестиции под',
@@ -130,9 +103,6 @@ abstract final class AntiSpam {
     'ставки на спорт',
     'казино',
     'беспроигрышная стратегия',
-    'выигрыш',
-    'джекпот',
-    'лотерея',
 
     // Кредиты и займы
     'кредит без справок',
@@ -154,53 +124,24 @@ abstract final class AntiSpam {
     'секреты успеха',
     'марафон похудения',
     'бесплатный вебинар',
-    'интенсив',
 
     // Сетевой маркетинг
     'сетевой маркетинг',
-    'млм',
     'бизнес возможность',
     'присоединяйся к команде',
     'построй свой бизнес',
 
-    // Фразы-усилители
-    'только для вас',
-    'эксклюзивно',
-    'ограниченная серия',
-    'специально для',
-    'впервые',
-    'революционно',
-
-    // Манипулятивные фразы
-    'все уже там',
-    'не пропусти',
-    'читать всем',
-    'срочная новость',
-    'шокирующая информация',
-    'вы не поверите',
-
     // Подозрительные обращения
     'дорогой клиент',
     'уважаемый пользователь',
-    'вы выиграли',
-    'поздравляем вас',
-
-    // Фразы для рассылок
-    'отписаться',
-    'рассылка',
-    'подпишись',
-    'подписаться на новости',
-    'получать уведомления',
 
     // Остальное
+    'пассивного дохода',
     'ограниченное предложение',
     'действуйте сейчас',
     'бесплатное предложение',
-    'гарантия',
     'без обязательств',
-    'победитель',
     'увеличение продаж',
-    'в личку',
     'писать в лc',
     'пишите в лс',
     'в лuчные сообщенuя',
@@ -214,8 +155,48 @@ abstract final class AntiSpam {
     'подробности в личке',
   };
 
-  // Подозрительные домены
-  static const Set<String> suspiciousDomains = <String>{
+  /// Stopwords in English and Russian
+  @visibleForTesting
+  static const Set<String> stopwords = {
+    // English stopwords
+    'and', 'the', 'is', 'in', 'on', 'at', 'for', 'with', 'not',
+    'by', 'be', 'this', 'are', 'from', 'or', 'that', 'an', 'it',
+    'his', 'but', 'he', 'she', 'as', 'you', 'do', 'their', 'all',
+    'will', 'there', 'can', 'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves',
+    'your', 'yours', 'yourself', 'yourselves', 'him', 'himself',
+    'her', 'hers', 'herself', 'its', 'itself', 'they', 'them',
+    'theirs', 'themselves', 'what', 'which', 'who', 'whom',
+    'these', 'those', 'am', 'was', 'were', 'been', 'being', 'have',
+    'has', 'had', 'having', 'does', 'did', 'a', 'if', 'because',
+    'until', 'while', 'of', 'about', 'against', 'between', 'into',
+    'through', 'during', 'before', 'after', 'above', 'below', 'to',
+    'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further',
+    'then', 'once', 'here', 'why', 'how', 'any', 'both', 'each',
+    'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor',
+    'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't',
+    'just', 'don', 'should', 'now',
+
+    // Russian stopwords
+    'а', 'без', 'более', 'больше', 'будет', 'будто', 'бы', 'был', 'была', 'были',
+    'было', 'быть', 'в', 'вам', 'вас', 'вдруг', 'ведь', 'во', 'вот', 'впрочем',
+    'все', 'всегда', 'всего', 'всех', 'всю', 'вы', 'где', 'да', 'даже', 'два',
+    'для', 'до', 'другой', 'его', 'ее', 'если', 'есть', 'еще', 'же', 'за', 'здесь',
+    'и', 'из', 'или', 'им', 'иногда', 'их', 'к', 'как', 'какая', 'какой', 'когда',
+    'конечно', 'которого', 'которые', 'кто', 'куда', 'ли', 'лучше', 'между',
+    'меня', 'мне', 'много', 'может', 'можно', 'мой', 'моя', 'мы', 'на', 'над',
+    'надо', 'наконец', 'нас', 'не', 'него', 'нее', 'нельзя', 'нет', 'ни', 'нибудь',
+    'никогда', 'ним', 'них', 'ничего', 'но', 'ну', 'о', 'об', 'один', 'он', 'она',
+    'они', 'оно', 'опять', 'от', 'перед', 'по', 'под', 'после', 'потом', 'потому',
+    'почти', 'при', 'про', 'раз', 'разве', 'с', 'сам', 'свое', 'свою', 'себе',
+    'себя', 'сегодня', 'сейчас', 'сказал', 'сказала', 'сказать', 'со', 'совсем',
+    'так', 'такой', 'там', 'тебя', 'тем', 'теперь', 'то', 'тогда', 'того', 'тоже',
+    'только', 'том', 'тот', 'три', 'тут', 'ты', 'у', 'уж', 'уже', 'хорошо', 'хоть',
+    'чего', 'чей', 'чем', 'через', 'что', 'чтоб', 'чтобы', 'чуть', 'эти', 'этого',
+    'этой', 'этом', 'этот', 'эту', 'я',
+  };
+
+  /// Suspicious domain TLDs
+  static const Set<String> suspiciousDomains = {
     '.xyz',
     '.top',
     '.space',
@@ -231,53 +212,77 @@ abstract final class AntiSpam {
     '.download',
   };
 
-  // URL regex pattern (supports Cyrillic domains)
+  /// URL regex pattern
   @visibleForTesting
-  static final RegExp urlPattern = RegExp(r'\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?\b', caseSensitive: false);
-
-  // Emoji pattern
-  @visibleForTesting
-  static final RegExp emojiPattern = RegExp(
-    r'[\u{1F300}-\u{1F9FF}]|[\u{2702}-\u{27B0}]|[\u{1F000}-\u{1F251}]',
-    unicode: true,
+  static final RegExp urlPattern = RegExp(
+    r'\b(?:https?://)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?)\b',
+    caseSensitive: false,
   );
 
-  // Special characters pattern (includes Russian letters)
+  /// Capital letters regex
   @visibleForTesting
-  static final RegExp specialCharsPattern = RegExp(r'[^\w\s\u0410-\u044F]');
+  static final RegExp capitalLettersPattern = RegExp(r'[A-Z\u0410-\u042F]');
 
-  // Pattern for detecting Russian letters
+  /// Latin and Cyrillic character regex
   @visibleForTesting
-  static final RegExp russianLettersPattern = RegExp(r'[\u0410-\u044F]');
+  static final RegExp latinPattern = RegExp('[a-zA-Z]');
+  @visibleForTesting
+  static final RegExp cyrillicPattern = RegExp(r'[\u0410-\u044F]');
 
-  // Maximum allowed URL count
+  /// Max allowed URLs in text
   @visibleForTesting
   static const int maxUrlCount = 3;
 
-  // Maximum allowed capital letters percentage
+  /// Max allowed capital letter percentage
   @visibleForTesting
   static const double maxCapitalLettersPercentage = 0.3;
 
-  // N-gram size for text analysis
+  /// N-gram size
   @visibleForTesting
   static const int nGramSize = 3;
 
-  /// Normalizes the input text by removing emojis, extra spaces, and converting to lowercase
+  /// Removes stopwords from text
   @visibleForTesting
-  static String normalizeText(String text) =>
-      text
-          // Remove emojis
-          .replaceAll(emojiPattern, '')
-          // Remove extra whitespace
-          .replaceAll(RegExp(r'\s+'), ' ')
-          // Remove special characters
-          .replaceAll(specialCharsPattern, '')
-          // Trim leading and trailing whitespace
-          .trim()
-          // Convert to lowercase
-          .toLowerCase();
+  static String removeStopwords(String text) => text.split(' ').where((word) => !stopwords.contains(word)).join(' ');
 
-  /// Generates n-grams from the input text
+  /// Normalizes text by removing special characters, extra spaces, and converting to lowercase
+  @visibleForTesting
+  static String normalizeText(String text) => removeStopwords(
+    text
+        .replaceAll(RegExp(r'[\p{P}\p{S}]', unicode: true), '') // Remove special characters
+        .replaceAll(RegExp(r'\s+'), ' ') // Remove extra spaces
+        .trim()
+        .toLowerCase(),
+  );
+
+  /// Calculates the percentage of capital letters in the text
+  @visibleForTesting
+  static double calculateCapitalLettersPercentage(String text) {
+    if (text.isEmpty) return 0;
+    final totalLetters = text.length;
+    final capitalCount = text.split('').where(capitalLettersPattern.hasMatch).length;
+    return capitalCount / totalLetters;
+  }
+
+  /// Checks if text contains mixed alphabets (Latin + Cyrillic)
+  @visibleForTesting
+  static bool hasMixedAlphabets(String text) => latinPattern.hasMatch(text) && cyrillicPattern.hasMatch(text);
+
+  /// Extracts domains from text
+  @visibleForTesting
+  static Set<String> extractDomains(String text) => urlPattern.allMatches(text).map((match) => match.group(1)!).toSet();
+
+  /// Checks if the text contains suspicious domains
+  @visibleForTesting
+  static bool hasSuspiciousDomains(String text) =>
+      extractDomains(text).any((domain) => suspiciousDomains.any((tld) => domain.toLowerCase().endsWith(tld)));
+
+  /// Counts the number of suspicious domains in the text
+  @visibleForTesting
+  static int countSuspiciousDomains(String text) =>
+      extractDomains(text).where((domain) => suspiciousDomains.any((tld) => domain.toLowerCase().endsWith(tld))).length;
+
+  /// Generates N-grams from the input text
   @visibleForTesting
   static List<String> generateNGrams(String text, int n) {
     if (text.length < n) return [text];
@@ -286,53 +291,12 @@ abstract final class AntiSpam {
     return ngrams;
   }
 
-  /// Extracts all domains from text
-  @visibleForTesting
-  static List<String> extractDomains(String text) => urlPattern
-      .allMatches(text)
-      .map((match) => match.group(0)) // Используем group(0), т.к. теперь регулярка проще
-      .whereType<String>() // Исключаем null-значения
-      .map((domain) => domain.toLowerCase()) // Приводим к нижнему регистру
-      .toList(growable: false);
-
-  /// Checks if domain ends with any suspicious TLD
-  @visibleForTesting
-  static bool isSuspiciousDomain(String domain) =>
-      suspiciousDomains.any((suspiciousTLD) => domain.toLowerCase().endsWith(suspiciousTLD.toLowerCase()));
-
-  /// Counts suspicious domains in text
-  @visibleForTesting
-  static int countSuspiciousDomains(String text) {
-    final domains = extractDomains(text);
-    return domains.where(isSuspiciousDomain).length;
-  }
-
-  /// Calculates the percentage of capital letters in the text (supports Russian)
-  @visibleForTesting
-  static double calculateCapitalLettersPercentage(String text) {
-    if (text.isEmpty) return 0;
-
-    final capitalCount = text.split('').where((char) => char.contains(RegExp(r'[A-Z\u0410-\u042F]'))).length;
-    return capitalCount / text.length;
-  }
-
-  /// Checks for repetitive patterns in the text
+  /// Detects repetitive patterns using N-grams
   @visibleForTesting
   static bool hasRepetitivePatterns(String text) {
     if (text.length < 10) return false;
 
-    // Check for repeated words
-    final words = text.split(' ');
-    final wordCount = <String, int>{};
-
-    for (final word in words) {
-      if (word.length < 3) continue;
-      wordCount[word] = (wordCount[word] ?? 0) + 1;
-      if (wordCount[word]! >= 3) return true;
-    }
-
-    // Check for repeated character patterns
-    final ngrams = generateNGrams(text, 3);
+    final ngrams = generateNGrams(text, nGramSize);
     final ngramCount = <String, int>{};
 
     for (final ngram in ngrams) {
@@ -343,66 +307,49 @@ abstract final class AntiSpam {
     return false;
   }
 
-  /// Checks if text contains mixed alphabets (Latin + Cyrillic)
+  /// Checks if the text contains known spam phrases using Set lookup
   @visibleForTesting
-  static bool hasMixedAlphabets(String text) {
-    final hasLatin = RegExp('[a-zA-Z]').hasMatch(text);
-    final hasCyrillic = russianLettersPattern.hasMatch(text);
-    return hasLatin && hasCyrillic;
-  }
+  static bool containsSpamPhrase(String text) => spamPhrases.any((phrase) => text.contains(phrase));
 
-  /// Main spam detection function
-  static Future<({bool spam, String reason})> check(String text) async {
+  /// Main function to check if the text is spam (runs in an isolate)
+  static Future<({bool spam, String reason})> check(String text) async =>
+      Isolate.run<({bool spam, String reason})>(() => checkSync(text));
+
+  /// Internal function for spam detection
+  static ({bool spam, String reason}) checkSync(String text) {
     if (text.isEmpty) return (spam: false, reason: 'Empty text');
-
-    // Store original text for capital letters check
-    final originalText = text;
 
     // Normalize text
     final normalizedText = normalizeText(text);
 
-    // Check text length
-    if (normalizedText.length < 24) return (spam: false, reason: 'Text too short');
+    // Check for short text
+    if (normalizedText.length < 16) return (spam: false, reason: 'Text too short');
 
     // Check for suspicious domains
-    final suspiciousDomainsCount = countSuspiciousDomains(text);
-    if (suspiciousDomainsCount > 1) return (spam: true, reason: 'Suspicious domains detected: $suspiciousDomainsCount');
+    if (countSuspiciousDomains(text) > 1) return (spam: true, reason: 'Suspicious domains detected');
 
     // Check for excessive URLs
-    final urlCount = urlPattern.allMatches(normalizedText).length;
-    if (urlCount > maxUrlCount)
-      return (spam: true, reason: 'Excessive URLs detected: $urlCount (max allowed: $maxUrlCount)');
+    final urlCount = urlPattern.allMatches(text).length;
+    if (urlCount > maxUrlCount) return (spam: true, reason: 'Too many URLs detected ($urlCount of $maxUrlCount)');
 
-    // Check for mixed alphabets (can be suspicious)
+    // Check for mixed alphabets
     //if (hasMixedAlphabets(normalizedText)) return (spam: true, reason: 'Mixed Latin and Cyrillic alphabets detected');
 
     // Check capital letters percentage
-    final capsPercentage = calculateCapitalLettersPercentage(originalText);
+    final capsPercentage = calculateCapitalLettersPercentage(text);
     if (capsPercentage > maxCapitalLettersPercentage)
       return (spam: true, reason: 'Excessive capital letters: ${(capsPercentage * 100).toStringAsFixed(1)}%');
 
-    // Check for repetitive patterns
+    // Check for repetitive patterns using N-grams
     if (hasRepetitivePatterns(normalizedText)) return (spam: true, reason: 'Repetitive patterns detected');
 
-    // Check for spam phrases
-    for (final phrase in spamPhrases)
-      if (normalizedText.contains(phrase)) return (spam: true, reason: 'Spam phrase detected: "$phrase"');
+    // Check for spam phrases using Set lookup
+    if (containsSpamPhrase(normalizedText))
+      return (
+        spam: true,
+        reason: 'Spam phrase detected: ${spamPhrases.firstWhereOrNull(normalizedText.contains) ?? '<Unknown>'}',
+      );
 
-    // Generate and analyze n-grams
-    final ngrams = generateNGrams(normalizedText, nGramSize);
-    final ngramFrequency = <String, int>{};
-
-    for (final ngram in ngrams) ngramFrequency[ngram] = (ngramFrequency[ngram] ?? 0) + 1;
-
-    // Check for suspicious n-gram patterns
-    var suspiciousNGrams = 0;
-    ngramFrequency.forEach((ngram, count) {
-      if (count > ngrams.length / 4) suspiciousNGrams++;
-    });
-
-    if (suspiciousNGrams > 3) return (spam: true, reason: 'Suspicious n-gram patterns detected');
-
-    // If all checks pass, consider the text as non-spam
     return (spam: false, reason: 'Text appears legitimate');
   }
 }
