@@ -139,7 +139,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -188,7 +188,8 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
         await m.deleteTable('settings_tbl');
         await m.createAll();
       case 2:
-        break; // Migration from 2 to 3
+        // Migration from 2 to 3
+        await m.createTable(db.deletedMessageHash);
       case 3:
         break; // Migration from 3 to 4
       default:

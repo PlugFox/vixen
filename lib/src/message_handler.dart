@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:l/l.dart';
 import 'package:vixen/src/bot.dart';
 import 'package:vixen/src/captcha.dart';
 import 'package:vixen/src/constant/constants.dart';
 import 'package:vixen/src/database.dart';
+import 'package:xxh3/xxh3.dart' as xxh3;
 
 /*
 {
@@ -153,8 +155,26 @@ class MessageHandler {
           type: type,
         );
 
+        // Ban the user for additional 7 days for sending a story, audio, video or voice
+        if (const {'story', 'audio', 'video', 'voice'}.contains(type)) {
+          final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
+          _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
+          _db
+              .banUser(
+                chatId: chatId,
+                userId: userId,
+                name: name.name ?? name.username ?? 'Unknown',
+                reason: 'Sending a $type without being verified',
+                bannedAt: date,
+                expiresAt: untilDate,
+              )
+              .ignore();
+          l.i('Banned user $userId for sending a $type without being verified in chat $chatId');
+          return;
+        }
+
+        // Ban the user for additional 7 days if the user is already banned
         if (await _db.isBanned(userId)) {
-          // Ban the user for additional 7 days
           _bot
               .banUser(
                 chatId,
@@ -162,7 +182,65 @@ class MessageHandler {
                 untilDate: DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000,
               )
               .ignore();
+          l.i('Banned user $userId because the user is already banned in chat $chatId');
           return;
+        }
+
+        // Check if the message have a lot of duplicates as a spam
+        {
+          final text =
+              switch (type) {
+                'text' => message['text']?.toString(),
+                'photo' => message['caption']?.toString(),
+                'audio' => message['caption']?.toString(),
+                'video' => message['caption']?.toString(),
+                'document' => message['caption']?.toString(),
+                'animation' => message['caption']?.toString(),
+                'voice' => message['caption']?.toString(),
+                'paid_media' => message['caption']?.toString(),
+                _ => null,
+              }?.trim().toLowerCase();
+          final length = text?.length ?? 0;
+          // Check if the message is a spam
+          if (text != null && length >= 48) {
+            final hash = xxh3.xxh3(utf8.encode(jsonEncode(message)));
+            final entry = await _db.transaction(() async {
+              final entry =
+                  await (_db.select(_db.deletedMessageHash)
+                        ..where((tbl) => tbl.length.equals(length) & tbl.hash.equals(hash))
+                        ..limit(1))
+                      .getSingleOrNull();
+              await _db
+                  .into(_db.deletedMessageHash)
+                  .insertOnConflictUpdate(
+                    DeletedMessageHashData(
+                      length: length,
+                      hash: hash,
+                      count: (entry?.count ?? 0) + 1,
+                      text: text,
+                      updateAt: date,
+                    ),
+                  );
+              return entry;
+            });
+            if (entry != null && entry.count >= 3) {
+              // Ban the user for additional 7 days for spamming
+              final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
+              _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
+              _db
+                  .banUser(
+                    chatId: chatId,
+                    userId: userId,
+                    name: name.name ?? name.username ?? 'Unknown',
+                    reason: 'Spamming the same message (${entry.count} times) without being verified',
+                    bannedAt: date,
+                    expiresAt: untilDate,
+                  )
+                  .ignore();
+              l.i('Banned user $userId for spamming the same message (${entry.count} times) in chat $chatId');
+              return;
+            }
+          }
         }
 
         // Check, maybe the user is already has a captcha
@@ -172,7 +250,7 @@ class MessageHandler {
                     ..where((tbl) => tbl.userId.equals(userId) & tbl.chatId.equals(chatId))
                     ..limit(1))
                   .getSingleOrNull();
-          // User already has a captcha
+          // User already has a captcha - do nothing
           if (captcha != null) return;
         }
 

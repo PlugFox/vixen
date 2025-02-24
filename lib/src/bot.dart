@@ -82,6 +82,7 @@ class Bot {
       'sticker',
       'animation',
       'video_note',
+      'paid_media',
       'contact',
       'location',
       'venue',
