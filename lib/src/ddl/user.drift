@@ -87,6 +87,8 @@ CREATE TABLE IF NOT EXISTS deleted_message_hash (
     PRIMARY KEY (length, hash)
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS deleted_message_hash_count_idx ON deleted_message_hash (count);
+
 -- Messages sent by users
 CREATE TABLE IF NOT EXISTS allowed_message (
     -- ID of the message the user sent

@@ -139,7 +139,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -191,7 +191,8 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
         // Migration from 2 to 3
         await m.createTable(db.deletedMessageHash);
       case 3:
-        break; // Migration from 3 to 4
+        // Migration from 3 to 4
+        await m.createIndex(db.deletedMessageHashCountIdx);
       default:
         if (kDebugMode) throw UnimplementedError('Unsupported migration from $from to $to');
     }

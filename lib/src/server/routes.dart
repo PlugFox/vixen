@@ -7,6 +7,27 @@ import 'package:vixen/src/server/middlewares.dart';
 import 'package:vixen/src/server/responses.dart';
 import 'package:vixen/vixen.dart';
 
+final Router $router =
+    Router(notFoundHandler: $ALL$NotFound)
+      // --- Meta --- //
+      ..get('/<ignored|health|healthz|status>', $GET$HealthCheck)
+      ..get('/<ignored|about|version>', $GET$About)
+      // --- Database --- //
+      ..get('/admin/<ignored|db|database|sqlite|sqlite3>', $GET$Admin$Database)
+      // --- Logs --- //
+      ..get('/admin/logs', $GET$Admin$Logs)
+      ..get('/admin/logs/<id>', $GET$Admin$Logs)
+      // --- Users --- //
+      ..get('/admin/users/verified', $GET$Admin$Users$Verified)
+      ..put('/admin/users/verified', $PUT$Admin$Users$Verified)
+      ..delete('/admin/users/verified', $DELETE$Admin$Users$Verified)
+      // --- Messages --- //
+      ..get('/admin/messages/deleted', $GET$Admin$Messages$Deleted)
+      ..get('/admin/messages/deleted/hash', $GET$Admin$Messages$Deleted$Hash)
+      // --- Not found --- //
+      //..get('/stat', $stat)
+      ..all('/<ignored|.*>', $ALL$NotFound);
+
 Response $GET$HealthCheck(Request request) =>
     Response.ok('{"data": {"status": "ok"}}', headers: <String, String>{'Content-Type': io.ContentType.json.value});
 
@@ -171,6 +192,20 @@ Future<Response> $GET$Admin$Messages$Deleted(Request request) async {
       await (db.select(db.deletedMessage)
             ..limit(limit.clamp(1, 1000))
             ..orderBy([(u) => OrderingTerm(expression: u.date, mode: OrderingMode.desc)]))
+          .get();
+  return Responses.ok(<String, Object?>{'count': items.length, 'items': items.map((e) => e.toJson()).toList()});
+}
+
+Future<Response> $GET$Admin$Messages$Deleted$Hash(Request request) async {
+  final limit = switch (request.url.queryParameters['limit']) {
+    String value when value.isNotEmpty => int.tryParse(value) ?? 1000,
+    _ => 1000,
+  };
+  final db = Dependencies.of(request).database;
+  final items =
+      await (db.select(db.deletedMessageHash)
+            ..limit(limit.clamp(1, 1000))
+            ..orderBy([(u) => OrderingTerm(expression: u.count, mode: OrderingMode.desc)]))
           .get();
   return Responses.ok(<String, Object?>{'count': items.length, 'items': items.map((e) => e.toJson()).toList()});
 }
