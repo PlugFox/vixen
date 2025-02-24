@@ -227,8 +227,9 @@ class MessageHandler {
               return entry;
             });
             if (entry != null && entry.count >= 4 && entry.message == text) {
-              // Ban the user for additional 7 days for spamming more than 5 times the same message
-              final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
+              // Ban the user for spamming more than 5 times the same message
+              final untilDate =
+                  DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceEpoch ~/ 1000;
               _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
               _db
                   .banUser(
