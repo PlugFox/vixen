@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS deleted_message_hash (
     count INTEGER NOT NULL,
 
     -- Text of the message
-    text TEXT NOT NULL,
+    message TEXT NOT NULL,
 
     -- Date of the last update
     update_at INTEGER NOT NULL,

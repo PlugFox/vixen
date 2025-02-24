@@ -212,7 +212,7 @@ class MessageHandler {
                       .getSingleOrNull();
               // If the same length and hash, but different text - do nothing
               // Low probability of hash collision
-              if (entry != null && entry.text != text) return null;
+              if (entry != null && entry.message != text) return null;
               await _db
                   .into(_db.deletedMessageHash)
                   .insertOnConflictUpdate(
@@ -220,13 +220,13 @@ class MessageHandler {
                       length: length,
                       hash: hash,
                       count: (entry?.count ?? 0) + 1,
-                      text: text,
+                      message: text,
                       updateAt: date,
                     ),
                   );
               return entry;
             });
-            if (entry != null && entry.count >= 2 && entry.text == text) {
+            if (entry != null && entry.count >= 2 && entry.message == text) {
               // Ban the user for additional 7 days for spamming more than 3 times the same message
               final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
               _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
