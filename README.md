@@ -2,6 +2,7 @@
 
 [![Checkout](https://github.com/PlugFox/vixen/actions/workflows/checkout.yml/badge.svg)](https://github.com/PlugFox/vixen/actions)
 [![Build](https://github.com/PlugFox/vixen/actions/workflows/build.yml/badge.svg)](https://github.com/PlugFox/vixen/actions)
+[![DockerHub](https://img.shields.io/docker/pulls/plugfox/vixen)](https://hub.docker.com/r/plugfox/vixen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 
 **Telegram Vixen Bot** is a bot for automatically banning spammers in Telegram chats.
