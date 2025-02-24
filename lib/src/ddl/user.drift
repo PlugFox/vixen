@@ -66,6 +66,27 @@ CREATE INDEX IF NOT EXISTS deleted_message_chat_id_idx ON deleted_message (chat_
 CREATE INDEX IF NOT EXISTS deleted_message_user_id_idx ON deleted_message (user_id);
 CREATE INDEX IF NOT EXISTS deleted_message_date_idx ON deleted_message (date);
 
+-- Hashes of deleted messages
+-- Allows to detect if a message is a typical spam message
+CREATE TABLE IF NOT EXISTS deleted_message_hash (
+    -- Length of the message
+    length INTEGER NOT NULL,
+
+    -- Hash of the message, e.g. xxHash3
+    hash INTEGER NOT NULL,
+
+    -- Counter of the message
+    count INTEGER NOT NULL,
+
+    -- Text of the message
+    message TEXT NOT NULL,
+
+    -- Date of the last update
+    update_at INTEGER NOT NULL,
+
+    PRIMARY KEY (length, hash)
+) STRICT;
+
 -- Messages sent by users
 CREATE TABLE IF NOT EXISTS allowed_message (
     -- ID of the message the user sent

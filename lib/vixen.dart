@@ -1,5 +1,6 @@
 library;
 
+export 'src/anti_spam.dart';
 export 'src/arguments.dart';
 export 'src/bot.dart';
 export 'src/callback_handler.dart';
