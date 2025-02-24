@@ -82,6 +82,10 @@ dart-version: ## Show the Dart version
 tag: ## Add a tag to the current commit
 	@dart run tool/tag.dart
 
+.PHONY: health
+health: ## Check the health of the bot
+	@curl https://vixen.plugfox.dev/health
+
 .PHONY: diff
 diff: ## git diff
 	$(call print-target)
