@@ -1,5 +1,21 @@
 # Vixen
 
+**Dart CAPTCHA Bot** is a security-focused bot written in Dart that helps prevent spam in Telegram groups
+by generating and sending CAPTCHA challenges to new users with a virtual keyboard.
+It automatically deletes initial messages from unverified users and supports multiple blocking modes.
+
+## Features
+
+- **CAPTCHA Verification**: Requires new users to complete a CAPTCHA before they can send messages.
+- **Blocking Modes**: Supports different verification and restriction mechanisms.
+- **Admin API**: Provides an API for managing bot settings and operations.
+- **SQLite Storage**: Stores persistent data in an SQLite database.
+- **Group-Specific Monitoring**: Watches only designated groups.
+- **Metrics Support**: Tracks bot performance and user activity.
+- **Flexible Configuration**: Configurable via command-line arguments, `.env` file, or environment variables.
+
+![](.img/captcha_1.webp)
+
 ## Configuration
 
 ```shell

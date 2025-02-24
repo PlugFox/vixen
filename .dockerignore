@@ -10,6 +10,7 @@ out/
 *.sqlite3
 
 .git/
+.img/
 .dart_tool/
 .coverage/
 .github/
