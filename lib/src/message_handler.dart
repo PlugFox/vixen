@@ -201,7 +201,7 @@ class MessageHandler {
                 _ => null,
               }?.trim().toLowerCase();
           final length = text?.length ?? 0;
-          // Check if the message is a spam
+          // Check if the message is a spam by checking the hash of the message
           if (text != null && length >= 48) {
             final hash = xxh3.xxh3(utf8.encode(jsonEncode(message)));
             final entry = await _db.transaction(() async {
@@ -210,6 +210,9 @@ class MessageHandler {
                         ..where((tbl) => tbl.length.equals(length) & tbl.hash.equals(hash))
                         ..limit(1))
                       .getSingleOrNull();
+              // If the same length and hash, but different text - do nothing
+              // Low probability of hash collision
+              if (entry != null && entry.text != text) return null;
               await _db
                   .into(_db.deletedMessageHash)
                   .insertOnConflictUpdate(
@@ -223,8 +226,8 @@ class MessageHandler {
                   );
               return entry;
             });
-            if (entry != null && entry.count >= 3) {
-              // Ban the user for additional 7 days for spamming
+            if (entry != null && entry.count >= 2 && entry.text == text) {
+              // Ban the user for additional 7 days for spamming more than 3 times the same message
               final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
               _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
               _db
@@ -251,7 +254,10 @@ class MessageHandler {
                     ..limit(1))
                   .getSingleOrNull();
           // User already has a captcha - do nothing
-          if (captcha != null) return;
+          if (captcha != null) {
+            l.d('User $userId already has a captcha in chat $chatId - do not send another one');
+            return;
+          }
         }
 
         final mention = switch (name) {
