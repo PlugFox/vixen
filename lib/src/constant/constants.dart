@@ -112,3 +112,7 @@ final String defaultCaptchaKeyboard = jsonEncode({
     ],
   ],
 });
+
+/// If a users sends the same message more than this number of times as initial
+/// messages, they will be considered as spamming.
+const int spamDuplicateLimit = 4;
