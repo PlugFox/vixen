@@ -207,16 +207,16 @@ void antiSpamTest() {
           тест.рф
         ''';
 
-        final domains = AntiSpam.extractDomains(text);
+        final domains = AntiSpam.$extractDomains(text);
         expect(domains, containsAll(['example.com', 'test.xyz', 'www.spam.space', 'good.website']));
       });
 
       test('isSuspiciousDomain should detect suspicious TLDs', () {
-        expect(AntiSpam.hasSuspiciousDomains('test.xyz'), isTrue);
-        expect(AntiSpam.hasSuspiciousDomains('example.space'), isTrue);
-        expect(AntiSpam.hasSuspiciousDomains('spam.top'), isTrue);
-        expect(AntiSpam.hasSuspiciousDomains('test.com'), isFalse);
-        expect(AntiSpam.hasSuspiciousDomains('example.org'), isFalse);
+        expect(AntiSpam.$hasSuspiciousDomains('test.xyz'), isTrue);
+        expect(AntiSpam.$hasSuspiciousDomains('example.space'), isTrue);
+        expect(AntiSpam.$hasSuspiciousDomains('spam.top'), isTrue);
+        expect(AntiSpam.$hasSuspiciousDomains('test.com'), isFalse);
+        expect(AntiSpam.$hasSuspiciousDomains('example.org'), isFalse);
       });
 
       test('countSuspiciousDomains should count correctly', () {
@@ -229,17 +229,17 @@ void antiSpamTest() {
           test.top
         ''';
 
-        expect(AntiSpam.countSuspiciousDomains(text), 3); // xyz, space, top
+        expect(AntiSpam.$countSuspiciousDomains(text), 3); // xyz, space, top
       });
 
       test('should not detect cyrillic domains', () {
-        expect(AntiSpam.hasSuspiciousDomains('тест.рф'), isFalse);
-        expect(AntiSpam.hasSuspiciousDomains('сайт.москва'), isFalse);
+        expect(AntiSpam.$hasSuspiciousDomains('тест.рф'), isFalse);
+        expect(AntiSpam.$hasSuspiciousDomains('сайт.москва'), isFalse);
       });
 
       test('should handle domains with subdomains', () {
-        expect(AntiSpam.hasSuspiciousDomains('sub.test.xyz'), isTrue);
-        expect(AntiSpam.hasSuspiciousDomains('sub.example.com'), isFalse);
+        expect(AntiSpam.$hasSuspiciousDomains('sub.test.xyz'), isTrue);
+        expect(AntiSpam.$hasSuspiciousDomains('sub.example.com'), isFalse);
       });
 
       test('should detect mixed legitimate and suspicious domains', () async {

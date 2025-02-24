@@ -9,7 +9,7 @@ abstract final class AntiSpam {
 
   /// Spam phrases stored in a Set for O(1) lookup
   @visibleForTesting
-  static const Set<String> spamPhrases = <String>{
+  static const Set<String> $spamPhrases = <String>{
     // English spam phrases
     'make money',
     'work from home',
@@ -157,7 +157,7 @@ abstract final class AntiSpam {
 
   /// Stopwords in English and Russian
   @visibleForTesting
-  static const Set<String> stopwords = {
+  static const Set<String> $stopwords = {
     // English stopwords
     'and', 'the', 'is', 'in', 'on', 'at', 'for', 'with', 'not',
     'by', 'be', 'this', 'are', 'from', 'or', 'that', 'an', 'it',
@@ -196,7 +196,7 @@ abstract final class AntiSpam {
   };
 
   /// Suspicious domain TLDs
-  static const Set<String> suspiciousDomains = {
+  static const Set<String> $suspiciousDomains = {
     '.xyz',
     '.top',
     '.space',
@@ -214,40 +214,41 @@ abstract final class AntiSpam {
 
   /// URL regex pattern
   @visibleForTesting
-  static final RegExp urlPattern = RegExp(
+  static final RegExp $urlPattern = RegExp(
     r'\b(?:https?://)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?)\b',
     caseSensitive: false,
   );
 
   /// Capital letters regex
   @visibleForTesting
-  static final RegExp capitalLettersPattern = RegExp(r'[A-Z\u0410-\u042F]');
+  static final RegExp $capitalLettersPattern = RegExp(r'[A-Z\u0410-\u042F]');
 
   /// Latin and Cyrillic character regex
   @visibleForTesting
-  static final RegExp latinPattern = RegExp('[a-zA-Z]');
+  static final RegExp $latinPattern = RegExp('[a-zA-Z]');
+
   @visibleForTesting
-  static final RegExp cyrillicPattern = RegExp(r'[\u0410-\u044F]');
+  static final RegExp $cyrillicPattern = RegExp('[а-яА-ЯёЁ]');
 
   /// Max allowed URLs in text
   @visibleForTesting
-  static const int maxUrlCount = 3;
+  static const int $maxUrlCount = 3;
 
   /// Max allowed capital letter percentage
   @visibleForTesting
-  static const double maxCapitalLettersPercentage = 0.3;
+  static const double $maxCapitalLettersPercentage = 0.3;
 
   /// N-gram size
   @visibleForTesting
-  static const int nGramSize = 3;
+  static const int $nGramSize = 3;
 
   /// Removes stopwords from text
   @visibleForTesting
-  static String removeStopwords(String text) => text.split(' ').where((word) => !stopwords.contains(word)).join(' ');
+  static String $removeStopwords(String text) => text.split(' ').where((word) => !$stopwords.contains(word)).join(' ');
 
   /// Normalizes text by removing special characters, extra spaces, and converting to lowercase
   @visibleForTesting
-  static String normalizeText(String text) => removeStopwords(
+  static String $normalizeText(String text) => $removeStopwords(
     text
         .replaceAll(RegExp(r'[\p{P}\p{S}]', unicode: true), '') // Remove special characters
         .replaceAll(RegExp(r'\s+'), ' ') // Remove extra spaces
@@ -257,34 +258,37 @@ abstract final class AntiSpam {
 
   /// Calculates the percentage of capital letters in the text
   @visibleForTesting
-  static double calculateCapitalLettersPercentage(String text) {
+  static double $calculateCapitalLettersPercentage(String text) {
     if (text.isEmpty) return 0;
     final totalLetters = text.length;
-    final capitalCount = text.split('').where(capitalLettersPattern.hasMatch).length;
+    final capitalCount = text.split('').where($capitalLettersPattern.hasMatch).length;
     return capitalCount / totalLetters;
   }
 
   /// Checks if text contains mixed alphabets (Latin + Cyrillic)
   @visibleForTesting
-  static bool hasMixedAlphabets(String text) => latinPattern.hasMatch(text) && cyrillicPattern.hasMatch(text);
+  static bool $hasMixedAlphabets(String text) => $latinPattern.hasMatch(text) && $cyrillicPattern.hasMatch(text);
 
   /// Extracts domains from text
   @visibleForTesting
-  static Set<String> extractDomains(String text) => urlPattern.allMatches(text).map((match) => match.group(1)!).toSet();
+  static Set<String> $extractDomains(String text) =>
+      $urlPattern.allMatches(text).map((match) => match.group(1)!).toSet();
 
   /// Checks if the text contains suspicious domains
   @visibleForTesting
-  static bool hasSuspiciousDomains(String text) =>
-      extractDomains(text).any((domain) => suspiciousDomains.any((tld) => domain.toLowerCase().endsWith(tld)));
+  static bool $hasSuspiciousDomains(String text) =>
+      $extractDomains(text).any((domain) => $suspiciousDomains.any((tld) => domain.toLowerCase().endsWith(tld)));
 
   /// Counts the number of suspicious domains in the text
   @visibleForTesting
-  static int countSuspiciousDomains(String text) =>
-      extractDomains(text).where((domain) => suspiciousDomains.any((tld) => domain.toLowerCase().endsWith(tld))).length;
+  static int $countSuspiciousDomains(String text) =>
+      $extractDomains(
+        text,
+      ).where((domain) => $suspiciousDomains.any((tld) => domain.toLowerCase().endsWith(tld))).length;
 
   /// Generates N-grams from the input text
   @visibleForTesting
-  static List<String> generateNGrams(String text, int n) {
+  static List<String> $generateNGrams(String text, int n) {
     if (text.length < n) return [text];
     final ngrams = <String>[];
     for (var i = 0; i <= text.length - n; i++) ngrams.add(text.substring(i, i + n));
@@ -293,15 +297,15 @@ abstract final class AntiSpam {
 
   /// Detects repetitive patterns using N-grams
   @visibleForTesting
-  static bool hasRepetitivePatterns(String text) {
-    if (text.length < 10) return false;
+  static bool $hasRepetitivePatterns(String text, {int n = 4}) {
+    if (text.length < 16) return false;
 
-    final ngrams = generateNGrams(text, nGramSize);
+    final ngrams = $generateNGrams(text, $nGramSize);
     final ngramCount = <String, int>{};
 
     for (final ngram in ngrams) {
-      ngramCount[ngram] = (ngramCount[ngram] ?? 0) + 1;
-      if (ngramCount[ngram]! >= 4) return true;
+      final count = ngramCount[ngram] = (ngramCount[ngram] ?? 0) + 1;
+      if (count >= n) return true;
     }
 
     return false;
@@ -309,46 +313,44 @@ abstract final class AntiSpam {
 
   /// Checks if the text contains known spam phrases using Set lookup
   @visibleForTesting
-  static bool containsSpamPhrase(String text) => spamPhrases.any((phrase) => text.contains(phrase));
+  static String? $containsSpamPhrase(String text) => $spamPhrases.firstWhereOrNull((phrase) => text.contains(phrase));
 
-  /// Main function to check if the text is spam (runs in an isolate)
+  /// Asynchronous spam detection algorithm
   static Future<({bool spam, String reason})> check(String text) async =>
       Isolate.run<({bool spam, String reason})>(() => checkSync(text));
 
-  /// Internal function for spam detection
+  /// Synchronous spam detection algorithm
   static ({bool spam, String reason}) checkSync(String text) {
     if (text.isEmpty) return (spam: false, reason: 'Empty text');
 
     // Normalize text
-    final normalizedText = normalizeText(text);
+    final normalizedText = $normalizeText(text);
 
     // Check for short text
     if (normalizedText.length < 16) return (spam: false, reason: 'Text too short');
 
     // Check for suspicious domains
-    if (countSuspiciousDomains(text) > 1) return (spam: true, reason: 'Suspicious domains detected');
+    if ($countSuspiciousDomains(text) case int count when count > 1)
+      return (spam: true, reason: 'Suspicious domains detected ($count)');
 
     // Check for excessive URLs
-    final urlCount = urlPattern.allMatches(text).length;
-    if (urlCount > maxUrlCount) return (spam: true, reason: 'Too many URLs detected ($urlCount of $maxUrlCount)');
+    final urlCount = $urlPattern.allMatches(text).length;
+    if (urlCount > $maxUrlCount) return (spam: true, reason: 'Too many URLs detected ($urlCount of ${$maxUrlCount})');
 
     // Check for mixed alphabets
     //if (hasMixedAlphabets(normalizedText)) return (spam: true, reason: 'Mixed Latin and Cyrillic alphabets detected');
 
     // Check capital letters percentage
-    final capsPercentage = calculateCapitalLettersPercentage(text);
-    if (capsPercentage > maxCapitalLettersPercentage)
+    final capsPercentage = $calculateCapitalLettersPercentage(text);
+    if (capsPercentage > $maxCapitalLettersPercentage)
       return (spam: true, reason: 'Excessive capital letters: ${(capsPercentage * 100).toStringAsFixed(1)}%');
 
     // Check for repetitive patterns using N-grams
-    if (hasRepetitivePatterns(normalizedText)) return (spam: true, reason: 'Repetitive patterns detected');
+    if ($hasRepetitivePatterns(normalizedText, n: 4)) return (spam: true, reason: 'Repetitive patterns detected');
 
     // Check for spam phrases using Set lookup
-    if (containsSpamPhrase(normalizedText))
-      return (
-        spam: true,
-        reason: 'Spam phrase detected: ${spamPhrases.firstWhereOrNull(normalizedText.contains) ?? '<Unknown>'}',
-      );
+    if ($containsSpamPhrase(normalizedText) case String spamPhrase)
+      return (spam: true, reason: 'Spam phrase detected: $spamPhrase');
 
     return (spam: false, reason: 'Text appears legitimate');
   }
