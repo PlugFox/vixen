@@ -25,6 +25,7 @@ final Router $router =
       ..get('/admin/messages/deleted', $GET$Admin$Messages$Deleted)
       ..get('/admin/messages/deleted/hash', $GET$Admin$Messages$Deleted$Hash)
       // --- Reports --- //
+      ..get('/report', $GET$Report)
       ..get('/admin/report', $GET$Admin$Report)
       // --- Not found --- //
       //..get('/stat', $stat)
@@ -263,17 +264,7 @@ WHERE
 ORDER BY
   del.count DESC;
 ''';
-Future<Response> $GET$Admin$Report(Request request) async {
-  final from = switch (request.url.queryParameters['from']) {
-        String iso when iso.isNotEmpty => DateTime.tryParse(iso),
-        _ => null,
-      },
-      to = switch (request.url.queryParameters['to']) {
-        String iso when iso.isNotEmpty => DateTime.tryParse(iso),
-        _ => null,
-      };
-  if (from == null || to == null) return Responses.error(const BadRequestException(detail: 'Invalid date range'));
-  final db = Dependencies.of(request).database;
+Future<Map<String, Object?>> _getReport({required Database db, required DateTime from, required DateTime to}) async {
   final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
   final mostActiveUsers =
       await db
@@ -295,7 +286,7 @@ Future<Response> $GET$Admin$Report(Request request) async {
             variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix)],
           )
           .get();
-  return Responses.ok(<String, Object?>{
+  return <String, Object?>{
     'from': from.toIso8601String(),
     'to': to.toIso8601String(),
     'active': mostActiveUsers
@@ -354,5 +345,39 @@ Future<Response> $GET$Admin$Report(Request request) async {
           },
         )
         .toList(growable: false),
-  });
+  };
+}
+
+var _$GET$ReportCache = (0, Future.value(const <String, Object?>{}));
+Future<Response> $GET$Report(Request request) async {
+  final now = DateTime.now();
+  final date = DateTime(now.year, now.month, now.day);
+  final value = (date.year << 9) | (date.month << 5) | date.day;
+  if (value == _$GET$ReportCache.$1) return Responses.ok(await _$GET$ReportCache.$2);
+  final result = _getReport(
+    db: Dependencies.of(request).database,
+    from: date.subtract(const Duration(days: 1)),
+    to: date,
+  );
+  _$GET$ReportCache = (value, result);
+  return Responses.ok(await result);
+}
+
+Future<Response> $GET$Admin$Report(Request request) async {
+  var from =
+          switch (request.url.queryParameters['from']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now().subtract(const Duration(days: 1)),
+      to =
+          switch (request.url.queryParameters['to']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now();
+  if (from.isAfter(to)) (from, to) = (to, from);
+  final db = Dependencies.of(request).database;
+  final report = await _getReport(db: db, from: from, to: to);
+  return Responses.ok(report);
 }
