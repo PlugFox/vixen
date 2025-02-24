@@ -67,15 +67,15 @@ dart run bin/vixen.dart
 
 ## ⚙️ Configuration
 
-| Argument                  | Environment Variable | `.env` Key | Description                                           | Default         |
-| ------------------------- | -------------------- | ---------- | ----------------------------------------------------- | --------------- |
-| `-t, --token=<TOKEN>`     | `CONFIG_TOKEN`       | `token`    | **(Required)** Telegram bot token                     | —               |
-| `-c, --chats=<CHATS>`     | `CONFIG_CHATS`       | `chats`    | Comma-separated list of chat IDs                      | —               |
-| `-s, --secret=<SECRET>`   | `CONFIG_SECRET`      | `secret`   | Secret admin API key                                  | —               |
-| `-d, --database=<PATH>`   | `CONFIG_DATABASE`    | `database` | Path to the SQLite database file                      | `data/vixen.db` |
-| `-a, --address=<ADDRESS>` | `CONFIG_ADDRESS`     | `address`  | Address to bind the server to                         | `0.0.0.0`       |
-| `-p, --port=<PORT>`       | `CONFIG_PORT`        | `port`     | Port to bind the server to                            | `8080`          |
-| `-v, --verbose=<LEVEL>`   | `CONFIG_VERBOSE`     | `verbose`  | Verbose mode: `all`, `debug`, `info`, `warn`, `error` | `warn`          |
+| Argument          | Environment       | Description                                           | Default         |
+| ----------------- | ----------------- | ----------------------------------------------------- | --------------- |
+| `-t, --token=`    | `CONFIG_TOKEN`    | **(Required)** Telegram bot token                     | —               |
+| `-c, --chats=`    | `CONFIG_CHATS`    | Comma-separated list of chat IDs                      | —               |
+| `-s, --secret=`   | `CONFIG_SECRET`   | Secret admin API key                                  | —               |
+| `-d, --database=` | `CONFIG_DATABASE` | Path to the SQLite database file                      | `data/vixen.db` |
+| `-a, --address=`  | `CONFIG_ADDRESS`  | Address to bind the server to                         | `0.0.0.0`       |
+| `-p, --port=`     | `CONFIG_PORT`     | Port to bind the server to                            | `8080`          |
+| `-v, --verbose=`  | `CONFIG_VERBOSE`  | Verbose mode: `all`, `debug`, `info`, `warn`, `error` | `warn`          |
 
 To see all available options, run:
 
