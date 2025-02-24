@@ -197,15 +197,21 @@ Future<Response> $GET$Admin$Messages$Deleted(Request request) async {
 }
 
 Future<Response> $GET$Admin$Messages$Deleted$Hash(Request request) async {
-  final limit = switch (request.url.queryParameters['limit']) {
+  final db = Dependencies.of(request).database;
+  final limit = switch (request.url.queryParameters['limit']?.trim()) {
     String value when value.isNotEmpty => int.tryParse(value) ?? 1000,
     _ => 1000,
   };
-  final db = Dependencies.of(request).database;
+  final orderBy = switch (request.url.queryParameters['order']?.trim().toLowerCase()) {
+    'count' => db.deletedMessageHash.count,
+    'date' => db.deletedMessageHash.updateAt,
+    'length' => db.deletedMessageHash.length,
+    _ => db.deletedMessageHash.count,
+  };
   final items =
       await (db.select(db.deletedMessageHash)
             ..limit(limit.clamp(1, 1000))
-            ..orderBy([(u) => OrderingTerm(expression: u.count, mode: OrderingMode.desc)]))
+            ..orderBy([(u) => OrderingTerm(expression: orderBy, mode: OrderingMode.desc)]))
           .get();
   return Responses.ok(<String, Object?>{'count': items.length, 'items': items.map((e) => e.toJson()).toList()});
 }
