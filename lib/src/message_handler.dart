@@ -228,8 +228,8 @@ class MessageHandler {
             });
             if (entry != null && entry.count >= spamDuplicateLimit && entry.message == text) {
               // Ban the user for spamming more than spamDuplicateLimit times the same message
-              final untilDate =
-                  DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceEpoch ~/ 1000;
+final untilDate =
+DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceEpoch ~/ 1000;
               _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
               _db
                   .banUser(

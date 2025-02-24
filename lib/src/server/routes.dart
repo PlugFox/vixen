@@ -350,7 +350,7 @@ Future<Map<String, Object?>> _getReport({required Database db, required DateTime
 
 var _$GET$ReportCache = (0, Future.value(const <String, Object?>{}));
 Future<Response> $GET$Report(Request request) async {
-  final now = DateTime.now().subtract(const Duration(days: 1));
+  final now = DateTime.now();
   final date = DateTime(now.year, now.month, now.day);
   final value = (date.year << 9) | (date.month << 5) | date.day;
   if (value == _$GET$ReportCache.$1) return Responses.ok(await _$GET$ReportCache.$2);
