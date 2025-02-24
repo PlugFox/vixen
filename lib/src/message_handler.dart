@@ -203,7 +203,7 @@ class MessageHandler {
           final length = text?.length ?? 0;
           // Check if the message is a spam by checking the hash of the message
           if (text != null && length >= 48) {
-            final hash = xxh3.xxh3(utf8.encode(jsonEncode(message)));
+            final hash = xxh3.xxh3(utf8.encode(text));
             final entry = await _db.transaction(() async {
               final entry =
                   await (_db.select(_db.deletedMessageHash)
