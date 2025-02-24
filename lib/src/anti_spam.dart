@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:collection/collection.dart';
@@ -315,9 +316,29 @@ abstract final class AntiSpam {
   @visibleForTesting
   static String? $containsSpamPhrase(String text) => $spamPhrases.firstWhereOrNull((phrase) => text.contains(phrase));
 
+  static Future<void> _mutex = Future<void>.value();
+
   /// Asynchronous spam detection algorithm
-  static Future<({bool spam, String reason})> check(String text) async =>
-      Isolate.run<({bool spam, String reason})>(() => checkSync(text));
+  static Future<({bool spam, String reason})> check(String text) {
+    Future<({bool spam, String reason})> compute(String text) =>
+        Isolate.run<({bool spam, String reason})>(() => AntiSpam.checkSync(text), debugName: 'AntiSpam.check()');
+
+    final completer = Completer<({bool spam, String reason})>();
+
+    _mutex = _mutex
+        .whenComplete(() async {
+          try {
+            final result = await compute(text);
+            completer.complete(result);
+          } on Object catch (e) {
+            completer.complete((spam: false, reason: 'Error: $e'));
+          }
+        })
+        // Ensure `_mutex` always updates, even after a failure
+        .catchError((e, stackTrace) => Future<void>.value());
+
+    return completer.future;
+  }
 
   /// Synchronous spam detection algorithm
   static ({bool spam, String reason}) checkSync(String text) {

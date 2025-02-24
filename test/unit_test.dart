@@ -312,5 +312,59 @@ void antiSpamTest() {
         );
       });
     });
+
+    group('AntiSpam.check() async', () {
+      const spam = 'Гарантированный доход от 100000 рублей!';
+
+      test('Detects spam correctly', () async {
+        final result = await AntiSpam.check(spam);
+        expect(result.spam, isTrue);
+        expect(result.reason, contains('Spam phrase detected'));
+      });
+
+      test('Detects non-spam correctly', () async {
+        final result = await AntiSpam.check('Hello, this is a normal message.');
+        expect(result.spam, isFalse);
+      });
+
+      test('Processes requests sequentially', () {
+        final results = Future.wait([
+          AntiSpam.check('Message 1'),
+          AntiSpam.check('Message 2'),
+          AntiSpam.check('Message 3'),
+        ]);
+        expectLater(
+          results,
+          completion(
+            allOf(
+              hasLength(3),
+              everyElement(
+                isA<({bool spam, String reason})>()
+                    .having((e) => e.spam, 'spam', isFalse)
+                    .having((e) => e.reason, 'reason', isNotEmpty),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('Handles high load without breaking', () {
+        const numberOfRequests = 25;
+        final results = Future.wait(List.generate(numberOfRequests, (i) => AntiSpam.check('My test message #$i')));
+        expectLater(
+          results,
+          completion(
+            allOf(
+              hasLength(numberOfRequests),
+              everyElement(
+                isA<({bool spam, String reason})>()
+                    .having((e) => e.spam, 'spam', isFalse)
+                    .having((e) => e.reason, 'reason', isNotEmpty),
+              ),
+            ),
+          ),
+        );
+      });
+    });
   });
 }
