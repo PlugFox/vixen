@@ -92,3 +92,7 @@ out/
 build/
 *.exe
 *.run
+
+# Chat export for AntiSpam test
+ChatExport.json
+ChatExport_spam.json
