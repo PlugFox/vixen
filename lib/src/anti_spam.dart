@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 /// Optimized spam detection algorithm with N-grams and Set-based spam phrase lookup
@@ -102,7 +101,6 @@ abstract final class AntiSpam {
 
     // Азартные игры
     'ставки на спорт',
-    'казино',
     'беспроигрышная стратегия',
 
     // Кредиты и займы
@@ -137,6 +135,8 @@ abstract final class AntiSpam {
     'уважаемый пользователь',
 
     // Остальное
+    'казино',
+    'порно',
     'пассивного дохода',
     'ограниченное предложение',
     'действуйте сейчас',
@@ -208,9 +208,6 @@ abstract final class AntiSpam {
     '.click',
     '.loan',
     '.work',
-    '.date',
-    '.racing',
-    '.download',
   };
 
   /// URL regex pattern
@@ -233,7 +230,7 @@ abstract final class AntiSpam {
 
   /// Max allowed URLs in text
   @visibleForTesting
-  static const int $maxUrlCount = 3;
+  static const int $maxUrlCount = 5;
 
   /// Max allowed capital letter percentage
   @visibleForTesting
@@ -314,7 +311,8 @@ abstract final class AntiSpam {
 
   /// Checks if the text contains known spam phrases using Set lookup
   @visibleForTesting
-  static String? $containsSpamPhrase(String text) => $spamPhrases.firstWhereOrNull((phrase) => text.contains(phrase));
+  static List<String> $containsSpamPhrase(String text) =>
+      $spamPhrases.where((phrase) => text.contains(phrase)).toList(growable: false);
 
   static Future<void> _mutex = Future<void>.value();
 
@@ -351,27 +349,33 @@ abstract final class AntiSpam {
     if (normalizedText.length < 16) return (spam: false, reason: 'Text too short');
 
     // Check for suspicious domains
-    if ($countSuspiciousDomains(text) case int count when count > 1)
+    if ($countSuspiciousDomains(text) case int count when count >= 1)
       return (spam: true, reason: 'Suspicious domains detected ($count)');
 
     // Check for excessive URLs
+    /*
     final urlCount = $urlPattern.allMatches(text).length;
     if (urlCount > $maxUrlCount) return (spam: true, reason: 'Too many URLs detected ($urlCount of ${$maxUrlCount})');
+    */
 
     // Check for mixed alphabets
     //if (hasMixedAlphabets(normalizedText)) return (spam: true, reason: 'Mixed Latin and Cyrillic alphabets detected');
 
     // Check capital letters percentage
+    /*
     final capsPercentage = $calculateCapitalLettersPercentage(text);
     if (capsPercentage > $maxCapitalLettersPercentage)
       return (spam: true, reason: 'Excessive capital letters: ${(capsPercentage * 100).toStringAsFixed(1)}%');
+    */
 
     // Check for repetitive patterns using N-grams
+    /*
     if ($hasRepetitivePatterns(normalizedText, n: 4)) return (spam: true, reason: 'Repetitive patterns detected');
+    */
 
     // Check for spam phrases using Set lookup
-    if ($containsSpamPhrase(normalizedText) case String spamPhrase)
-      return (spam: true, reason: 'Spam phrase detected: $spamPhrase');
+    if ($containsSpamPhrase(normalizedText) case List<String> list when list.length > 1)
+      return (spam: true, reason: 'Spam phrase detected: ${list.join(', ')}');
 
     return (spam: false, reason: 'Text appears legitimate');
   }
