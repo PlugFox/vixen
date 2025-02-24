@@ -356,8 +356,8 @@ Future<Response> $GET$Report(Request request) async {
   if (value == _$GET$ReportCache.$1) return Responses.ok(await _$GET$ReportCache.$2);
   final result = _getReport(
     db: Dependencies.of(request).database,
-    from: date.subtract(const Duration(days: 2)), // Day before yesterday
-    to: date.subtract(const Duration(days: 1)), // Yesterday
+    from: date.subtract(const Duration(days: 1)), // Beginning of yesterday
+    to: date, // Beginning of today
   );
   _$GET$ReportCache = (value, result);
   return Responses.ok(await result);
