@@ -1,10 +1,15 @@
-# Vixen
+# Telegram Vixen Bot
 
-**Dart CAPTCHA Bot** is a security-focused bot written in Dart that helps prevent spam in Telegram groups
+[![Checkout](https://github.com/PlugFox/vixen/actions/workflows/checkout.yml/badge.svg)](https://github.com/PlugFox/vixen/actions)
+[![Build](https://github.com/PlugFox/vixen/actions/workflows/build.yml/badge.svg)](https://github.com/PlugFox/vixen/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://opensource.org/licenses/MIT)
+
+**Telegram Vixen Bot** is a bot for automatically banning spammers in Telegram chats.
+Written in Dart that helps prevent spam in Telegram groups
 by generating and sending CAPTCHA challenges to new users with a virtual keyboard.
 It automatically deletes initial messages from unverified users and supports multiple blocking modes.
 
-## Features
+## ✨ Features
 
 - **CAPTCHA Verification**: Requires new users to complete a CAPTCHA before they can send messages.
 - **Blocking Modes**: Supports different verification and restriction mechanisms.
@@ -16,62 +21,99 @@ It automatically deletes initial messages from unverified users and supports mul
 
 ![](.img/captcha_1.webp)
 
-## Configuration
+## 🚀 Getting Started
 
-```shell
-Telegram Vixen Bot
+The bot supports configuration via command-line arguments, environment variables, or a `.env` file.
 
--h, --help                                 Print this usage information
--t, --token=<123:ABC-DEF> (mandatory)      Telegram bot token
--c, --chats=<123,-456,-789> (mandatory)    Comma-separated list of chat IDs
--s, --secret=<1234567890>                  Secret admin API key
--d, --database=<data/vixen.db>             Path to the SQLite database file
-                                           (defaults to "data/vixen.db")
--a, --address=<0.0.0.0>                    Address to bind the server to
-                                           (defaults to "0.0.0.0")
--p, --port=<8080>                          Port to bind the server to
-                                           (defaults to "8080")
--v, --verbose=<info>                       Verbose mode for output: all | debug | info | warn | error
-                                           (defaults to "warn")
-```
+### 🔧 Install Dependencies
 
-## How to run
+Ensure you have [Dart SDK](https://dart.dev/get-dart) installed. Then, run:
 
-Get dependencies:
-
-```shell
+```sh
 dart pub get
-```
-
-Code generation:
-
-```shell
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-Create environment file and fill it with your credentials:
+### ▶ Run the Bot
 
-```shell
-cp .env.example .env
+You can start the bot using command-line arguments:
+
+```sh
+dart run bin/vixen.dart --token=123:ABC-DEF --chats=123,-456,-789 --secret=1234567890
 ```
 
-Run the program:
+Or set the configuration using environment variables:
 
-```shell
+```sh
+export CONFIG_TOKEN="123:ABC-DEF"
+export CONFIG_CHATS="123,-456,-789"
+export CONFIG_SECRET="1234567890"
+dart run bin/vixen.dart
+```
+
+Alternatively, create a `.env` file:
+
+```sh
+echo "token=123:ABC-DEF" > .env
+echo "chats=123,-456,-789" >> .env
+echo "secret=1234567890" >> .env
+```
+
+Then, start the bot:
+
+```sh
+dart run bin/vixen.dart
+```
+
+## ⚙️ Configuration
+
+| Argument                  | Environment Variable | `.env` Key | Description                                           | Default         |
+| ------------------------- | -------------------- | ---------- | ----------------------------------------------------- | --------------- |
+| `-t, --token=<TOKEN>`     | `CONFIG_TOKEN`       | `token`    | **(Required)** Telegram bot token                     | —               |
+| `-c, --chats=<CHATS>`     | `CONFIG_CHATS`       | `chats`    | Comma-separated list of chat IDs                      | —               |
+| `-s, --secret=<SECRET>`   | `CONFIG_SECRET`      | `secret`   | Secret admin API key                                  | —               |
+| `-d, --database=<PATH>`   | `CONFIG_DATABASE`    | `database` | Path to the SQLite database file                      | `data/vixen.db` |
+| `-a, --address=<ADDRESS>` | `CONFIG_ADDRESS`     | `address`  | Address to bind the server to                         | `0.0.0.0`       |
+| `-p, --port=<PORT>`       | `CONFIG_PORT`        | `port`     | Port to bind the server to                            | `8080`          |
+| `-v, --verbose=<LEVEL>`   | `CONFIG_VERBOSE`     | `verbose`  | Verbose mode: `all`, `debug`, `info`, `warn`, `error` | `warn`          |
+
+To see all available options, run:
+
+```sh
 dart run bin/vixen.dart --help
 ```
 
-## How to build
+## 🏗️ Building
 
-```shell
+### 🛠️ How to compile
+
+```sh
 dart pub get
 dart run build_runner build --delete-conflicting-outputs
 dart compile exe bin/vixen.dart -o vixen.run
 ```
 
-## How to Docker
+### 🐋 How to Docker
 
-```shell
+```sh
 docker build -t vixen:latest .
 docker compose up
 ```
+
+## 📝 Contributers
+
+- [Mike Matiunin aka Plague Fox](https://plugfox.dev)
+
+## 🤝 Funding
+
+If you want to support the development of our library, there are several ways you can do it:
+
+- [Buy me a coffee](https://www.buymeacoffee.com/plugfox)
+- [Support on Patreon](https://www.patreon.com/plugfox)
+- [Subscribe through Boosty](https://boosty.to/plugfox)
+
+We appreciate any form of support, whether it's a financial donation or just a star on GitHub. It helps us to continue developing and improving our library. Thank you for your support!
+
+## 📜 License
+
+This project is licensed under [The MIT License](https://opensource.org/licenses/MIT).
