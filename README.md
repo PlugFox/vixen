@@ -68,15 +68,15 @@ dart run bin/vixen.dart
 
 ## ⚙️ Configuration
 
-| Argument          | Environment       | Description                                           | Default         |
-| ----------------- | ----------------- | ----------------------------------------------------- | --------------- |
-| `-t` `--token`    | `CONFIG_TOKEN`    | **(Required)** Telegram bot token                     | —               |
-| `-c` `--chats`    | `CONFIG_CHATS`    | Comma-separated list of chat IDs                      | —               |
-| `-s` `--secret`   | `CONFIG_SECRET`   | Secret admin API key                                  | —               |
-| `-d` `--database` | `CONFIG_DATABASE` | Path to the SQLite database file                      | `data/vixen.db` |
-| `-a` `--address`  | `CONFIG_ADDRESS`  | Address to bind the server to                         | `0.0.0.0`       |
-| `-p` `--port`     | `CONFIG_PORT`     | Port to bind the server to                            | `8080`          |
-| `-v` `--verbose`  | `CONFIG_VERBOSE`  | Verbose mode: `all`, `debug`, `info`, `warn`, `error` | `warn`          |
+| Argument          | Environment      | Description                                           | Default         |
+| ----------------- | ---------------- | ----------------------------------------------------- | --------------- |
+| `-t` `--token=`   | `CONFIG_TOKEN`   | **(Required)** Telegram bot token                     | —               |
+| `-c` `--chats=`   | `CONFIG_CHATS`   | Comma-separated list of chat IDs                      | —               |
+| `-s` `--secret=`  | `CONFIG_SECRET`  | Secret admin API key                                  | —               |
+| `-d` `--db=`      | `CONFIG_DB`      | Path to the SQLite database file                      | `data/vixen.db` |
+| `-a` `--address=` | `CONFIG_ADDRESS` | Address to bind the server to                         | `0.0.0.0`       |
+| `-p` `--port=`    | `CONFIG_PORT`    | Port to bind the server to                            | `8080`          |
+| `-v` `--verbose=` | `CONFIG_VERBOSE` | Verbose mode: `all`, `debug`, `info`, `warn`, `error` | `warn`          |
 
 To see all available options, run:
 

@@ -36,9 +36,9 @@ ArgParser _buildParser() =>
       )
       /* ..addSeparator('') */
       ..addOption(
-        'database',
+        'db',
         abbr: 'd',
-        aliases: ['db', 'sqlite', 'sql', 'file', 'path'],
+        aliases: ['database', 'sqlite', 'sql', 'file', 'path'],
         mandatory: false,
         help: 'Path to the SQLite database file',
         defaultsTo: 'data/vixen.db',
@@ -79,7 +79,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'chats', 'secret', 'verbose', 'database', 'address', 'port'};
+      const options = <String>{'token', 'chats', 'secret', 'verbose', 'db', 'address', 'port'};
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //
@@ -109,7 +109,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
       if (table['help'] == 'true') {
         io.stdout
-          ..writeln('Telegram Vixen Bot')
+          ..writeln(_help.trim())
           ..writeln()
           ..writeln(parser.usage);
         io.exit(0);
@@ -135,7 +135,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           table['chats']?.split(',').map((e) => int.tryParse(e.trim())) ?? const Iterable.empty(),
         ),
         secret: table['secret'] ?? (kDebugMode ? Object().hashCode.toRadixString(36) : ''),
-        database: table['database'] ?? 'data/vixen.db',
+        database: table['db'] ?? 'data/vixen.db',
         address: table['address'] ?? io.InternetAddress.anyIPv4,
         port: int.tryParse(table['port'] ?? '8080') ?? 8080,
       );
@@ -199,3 +199,12 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
   @override
   String? operator [](Object? key) => _arguments[key];
 }
+
+const String _help = '''
+Telegram Vixen Bot
+
+Telegram Vixen Bot is a bot for automatically banning spammers in Telegram chats.
+Written in Dart that helps prevent spam in Telegram groups by generating and
+sending CAPTCHA challenges to new users with a virtual keyboard.
+It automatically deletes initial messages from unverified users.
+''';
