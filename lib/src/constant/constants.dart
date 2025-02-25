@@ -69,7 +69,7 @@ const double precisionErrorTolerance = 1e-10;
 const String updateIdKey = 'update_id';
 
 /// Captcha lifetime in seconds.
-const int captchaLifetime = 2 * 60; // 2 minutes
+const int captchaLifetime = 1 * 60; // 1 minute
 
 // --- Keyboard Callbacks --- //
 
