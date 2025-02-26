@@ -224,7 +224,7 @@ Future<Map<String, Object?>> _getReport({required Database db, required DateTime
   final reports = Reports(db: db);
   final mostActiveUsers = await reports.mostActiveUsers(from, to);
   final spamMessages = await reports.spamMessages(from, to);
-  final bannedUsers = await reports.bannedMessages(from, to);
+  final bannedUsers = await reports.bannedUsers(from, to);
   final deletedCount = await reports.deletedCount(from, to);
   return <String, Object?>{
     'from': from.toIso8601String(),

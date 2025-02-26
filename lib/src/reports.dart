@@ -19,7 +19,7 @@ typedef ReportSpamMessages = List<({String message, int count, DateTime date})>;
   },
 }
 */
-typedef ReportBannedMessages =
+typedef ReportBannedUsers =
     List<({int cid, int uid, String username, String? reason, DateTime bannedAt, DateTime? expiresAt})>;
 
 @immutable
@@ -76,8 +76,8 @@ final class Reports {
         .toList(growable: false);
   }
 
-  /// Returns banned messages in the given time frame.
-  Future<ReportBannedMessages> bannedMessages(DateTime from, DateTime to, [int? chatId]) async {
+  /// Returns banned users in the given time frame.
+  Future<ReportBannedUsers> bannedUsers(DateTime from, DateTime to, [int? chatId]) async {
     final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
     var query = _db.select(_db.banned)..where((tbl) => tbl.bannedAt.isBetweenValues(fromUnix, toUnix));
     if (chatId != null) query = query..where((tbl) => tbl.chatId.equals(chatId));
@@ -107,7 +107,7 @@ final class Reports {
             .customSelect(
               'SELECT chat_id AS cid, COUNT(1) AS count '
               'FROM deleted_message WHERE date BETWEEN :from AND :to '
-              'AND (:cid == 0 OR msg.chat_id = :cid) '
+              'AND (:cid == 0 OR chat_id = :cid) '
               'GROUP BY chat_id',
               variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(chatId ?? 0)],
             )
@@ -134,7 +134,7 @@ WITH RankedUsers AS (
     msg.chat_id,
     msg.user_id
   HAVING
-    COUNT(*) > 3
+    COUNT(1) > 2
 )
 SELECT
   cid,

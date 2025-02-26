@@ -1,0 +1,10 @@
+-- Report message table
+CREATE TABLE report_message (
+    message_id INTEGER NOT NULL PRIMARY KEY, -- Primary key with auto-increment
+    chat_id INTEGER NOT NULL, -- Identifier for the chat
+    type TEXT NOT NULL, -- Type of the report
+    created_at INTEGER NOT NULL, -- Creation timestamp
+    updated_at INTEGER NOT NULL -- Last update timestamp
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS report_message_chat_id_idx ON report_message (chat_id);
