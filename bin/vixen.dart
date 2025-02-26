@@ -400,7 +400,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
       }
     }
 
-    Timer(Duration.zero, sendReports);
+    Timer(duration, sendReports);
   }
 
   planReport();
