@@ -68,6 +68,9 @@ const double precisionErrorTolerance = 1e-10;
 /// The key used to store the last update id in the database.
 const String updateIdKey = 'update_id';
 
+/// The key used to store the last reports date in the database.
+const String lastReportKey = 'last_report';
+
 /// Captcha lifetime in seconds.
 const int captchaLifetime = 1 * 60; // 1 minute
 

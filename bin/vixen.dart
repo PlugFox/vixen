@@ -4,8 +4,10 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io' as io;
 
+import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 import 'package:l/l.dart';
+import 'package:vixen/src/reports.dart';
 import 'package:vixen/vixen.dart';
 
 /// The main entry point of the bot.
@@ -59,6 +61,8 @@ void main(List<String> args) {
           ..addHandler(handler(arguments: arguments, bot: bot, db: db, captchaQueue: captchaQueue))
           ..start();
         l.i('Bot is running');
+
+        sendReportsTimer(db, bot, arguments.chats);
 
         // TODO(plugfox): Metrics, Tests
         // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
@@ -227,4 +231,127 @@ Future<T?> shutdownHandler<T extends Object?>([final Future<T> Function()? onShu
       sigTermSub = io.ProcessSignal.sigterm.watch().listen(signalHandler, cancelOnError: false);
   }
   return shutdownCompleter.future;
+}
+
+void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
+  if (chats.isEmpty) return;
+  const reportAtHour = 15; // Hour of the day to send the report
+  final reports = Reports(db: db);
+
+  void planReport() {
+    final now = DateTime.now().toUtc();
+    final nextReportTime = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+      reportAtHour,
+    ).add(now.hour >= reportAtHour ? const Duration(days: 1) : Duration.zero);
+
+    final duration = nextReportTime.difference(now);
+
+    Future<void> sendReports() async {
+      try {
+        final to = DateTime.now().toUtc(), from = to.subtract(const Duration(days: 1));
+        final toUnix = to.millisecondsSinceEpoch ~/ 1000, fromUnix = from.millisecondsSinceEpoch ~/ 1000;
+
+        // Delete the old report
+        {
+          final oldReports =
+              await (db.delete(db.reportMessage)..where((tbl) => tbl.type.equals('report'))).goAndReturn();
+          for (final report in oldReports) bot.deleteMessage(report.chatId, report.messageId).ignore();
+        }
+
+        final buffer = StringBuffer();
+        for (final cid in chats) {
+          // Get data from the database
+          final mostActiveUsers = await reports
+              .mostActiveUsers(from, to, cid)
+              .then<ReportMostActiveUsers>((r) => r[cid] ?? const []);
+          final bannedUsers = await reports.bannedUsers(from, to, cid);
+          final sentMessagesCount = await db
+              .customSelect(
+                'SELECT COUNT(1) AS count '
+                'FROM allowed_message '
+                'WHERE date BETWEEN :from AND :to AND chat_id = :cid;',
+                variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(cid)],
+              )
+              .getSingle()
+              .then((r) => r.read<int>('count'));
+          final deletedMessagesCount = await reports
+              .deletedCount(from, to, cid)
+              .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
+          if (mostActiveUsers.isEmpty && bannedUsers.isEmpty && sentMessagesCount == 0 && deletedMessagesCount == 0)
+            continue;
+
+          // Create new report
+          buffer
+            ..writeln('*📅 Report for ${Bot.escapeMarkdownV2(DateFormat('dd MMM yyyy', 'en_US').format(from))}*')
+            ..writeln();
+
+          if (sentMessagesCount > 0) {
+            buffer
+              ..writeln('*📊 Messages count:* $sentMessagesCount')
+              ..writeln();
+          }
+
+          if (deletedMessagesCount > 0) {
+            buffer
+              ..writeln('*🗑️ Deleted messages:* $deletedMessagesCount')
+              ..writeln();
+          }
+
+          if (mostActiveUsers.isNotEmpty) {
+            if (mostActiveUsers.length == 1) {
+              buffer.write('*🥇 Most active user* ');
+            } else {
+              buffer.writeln('*🥇 Most active users:*');
+            }
+            for (final e in mostActiveUsers) {
+              buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} messages\\)');
+            }
+            buffer.writeln();
+          }
+
+          if (bannedUsers.isNotEmpty) {
+            if (bannedUsers.length == 1) {
+              buffer.write('*🚫 Banned user* ');
+            } else {
+              buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
+            }
+            for (final e in bannedUsers) {
+              buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.reason}\\)');
+            }
+            buffer.writeln();
+          }
+
+          // Send new report
+          final messageId = await bot.sendMessage(cid, buffer.toString());
+          db
+              .into(db.reportMessage)
+              .insert(
+                ReportMessageCompanion.insert(
+                  messageId: Value(messageId),
+                  chatId: cid,
+                  type: 'report',
+                  createdAt: toUnix,
+                  updatedAt: toUnix,
+                ),
+              )
+              .ignore();
+
+          // Clear the buffer
+          buffer.clear();
+        }
+      } on Object catch (e, s) {
+        l.w('Failed to send reports: $e', s);
+      } finally {
+        Timer(const Duration(hours: 1), planReport); // Reschedule the next report plan
+        db.setKey(lastReportKey, DateTime.now().toUtc().toIso8601String());
+      }
+    }
+
+    Timer(duration, sendReports);
+  }
+
+  planReport();
 }

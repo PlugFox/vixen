@@ -45,6 +45,9 @@ class Bot {
     return buffer.toString();
   }
 
+  /// Format a user mention as a link.
+  static String userMention(int uid, String username) => '[${escapeMarkdownV2(username)}](tg://user?id=$uid)';
+
   /// Format a username from a user object.
   /// [name] - The name of the user if available otherwise the username.
   /// [escaped] - The escaped name of the user.
@@ -151,11 +154,22 @@ class Bot {
   }
 
   /// Send a message to a chat.
-  Future<int> sendMessage(int chatId, String text) async {
+  Future<int> sendMessage(
+    int chatId,
+    String text, {
+    bool disableNotification = true,
+    bool protectContent = true,
+  }) async {
     final url = _buildMethodUri('sendMessage');
     final response = await _client.post(
       url,
-      body: _jsonEncoder.convert({'chat_id': chatId, 'text': text}),
+      body: _jsonEncoder.convert({
+        'chat_id': chatId,
+        'text': text,
+        'parse_mode': 'MarkdownV2',
+        'disable_notification': disableNotification,
+        'protect_content': protectContent,
+      }),
       headers: {'Content-Type': 'application/json'},
     );
     if (response.statusCode != 200) throw Exception('Failed to send message: status code ${response.statusCode}');

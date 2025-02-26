@@ -3,6 +3,7 @@ import 'dart:io' as io;
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:vixen/src/reports.dart';
 import 'package:vixen/src/server/middlewares.dart';
 import 'package:vixen/src/server/responses.dart';
 import 'package:vixen/vixen.dart';
@@ -219,89 +220,16 @@ Future<Response> $GET$Admin$Messages$Deleted$Hash(Request request) async {
   return Responses.ok(<String, Object?>{'count': items.length, 'items': items.map((e) => e.toJson()).toList()});
 }
 
-const String _mostActiveUsersQuery = '''
-WITH RankedUsers AS (
-  SELECT
-    msg.chat_id       AS cid,
-    msg.user_id       AS uid,
-    MAX(msg.username) AS username,
-    MAX(msg.date)     AS seen,
-    COUNT(*)          AS count,
-    ROW_NUMBER() OVER (PARTITION BY msg.chat_id ORDER BY COUNT(*) DESC) AS rnk
-  FROM
-    allowed_message AS msg
-  WHERE
-    date BETWEEN :from AND :to
-  GROUP BY
-    msg.chat_id,
-    msg.user_id
-  HAVING
-    COUNT(*) > 3
-)
-SELECT
-  cid,
-  uid,
-  username,
-  seen,
-  count
-FROM
-  RankedUsers
-WHERE
-  rnk <= 3
-ORDER BY
-  cid, count DESC;
-''';
-const String _spamMessagesQuery = '''
-SELECT
-  del.message   AS message,
-  del.count     AS count,
-  del.update_at AS date
-FROM
-  deleted_message_hash AS del
-WHERE
-  date BETWEEN :from AND :to
-  AND del.count > :threshold
-ORDER BY
-  del.count DESC;
-''';
 Future<Map<String, Object?>> _getReport({required Database db, required DateTime from, required DateTime to}) async {
-  final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
-  final mostActiveUsers =
-      await db
-          .customSelect(_mostActiveUsersQuery, variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix)])
-          .get();
-  final spamMessages =
-      await db
-          .customSelect(
-            _spamMessagesQuery,
-            variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(spamDuplicateLimit)],
-          )
-          .get();
-  final bannedUsers =
-      await (db.select(db.banned)..where((tbl) => tbl.bannedAt.isBetweenValues(fromUnix, toUnix))).get();
-  final deletedCount =
-      await db
-          .customSelect(
-            'SELECT chat_id AS cid, COUNT(1) AS count FROM deleted_message WHERE date BETWEEN :from AND :to GROUP BY chat_id',
-            variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix)],
-          )
-          .get();
+  final reports = Reports(db: db);
+  final mostActiveUsers = await reports.mostActiveUsers(from, to);
+  final spamMessages = await reports.spamMessages(from, to);
+  final bannedUsers = await reports.bannedUsers(from, to);
+  final deletedCount = await reports.deletedCount(from, to);
   return <String, Object?>{
     'from': from.toIso8601String(),
     'to': to.toIso8601String(),
-    'active': mostActiveUsers
-        .fold<Map<int, List<({int uid, String username, DateTime seen, int count})>>>(
-          {},
-          (r, q) =>
-              r
-                ..putIfAbsent(q.read<int>('cid'), () => []).add((
-                  uid: q.read<int>('uid'),
-                  username: q.read<String>('username'),
-                  seen: DateTime.fromMillisecondsSinceEpoch(q.read<int>('seen') * 1000),
-                  count: q.read<int>('count'),
-                )),
-        )
-        .entries
+    'active': mostActiveUsers.entries
         .map(
           (e) => <String, Object?>{
             'cid': e.key,
@@ -320,28 +248,21 @@ Future<Map<String, Object?>> _getReport({required Database db, required DateTime
         .toList(growable: false),
     'spam': spamMessages
         .map<Map<String, Object?>>(
-          (e) => <String, Object?>{
-            'message': e.read<String>('message'),
-            'count': e.read<int>('count'),
-            'date': DateTime.fromMillisecondsSinceEpoch(e.read<int>('date') * 1000).toIso8601String(),
-          },
+          (e) => <String, Object?>{'message': e.message, 'count': e.count, 'date': e.date.toIso8601String()},
         )
         .toList(growable: false),
     'deleted': deletedCount
-        .map<Map<String, Object?>>((e) => <String, Object?>{'cid': e.read<int>('cid'), 'count': e.read<int>('count')})
+        .map<Map<String, Object?>>((e) => <String, Object?>{'cid': e.cid, 'count': e.count})
         .toList(growable: false),
     'banned': bannedUsers
         .map(
           (e) => {
-            'cid': e.chatId,
-            'uid': e.userId,
-            'username': e.name,
+            'cid': e.cid,
+            'uid': e.uid,
+            'username': e.username,
             'reason': e.reason,
-            'bannedAt': DateTime.fromMillisecondsSinceEpoch(e.bannedAt * 1000).toIso8601String(),
-            'expiresAt': switch (e.expiresAt) {
-              int n => DateTime.fromMillisecondsSinceEpoch(n * 1000).toIso8601String(),
-              _ => null,
-            },
+            'bannedAt': e.bannedAt.toIso8601String(),
+            'expiresAt': e.expiresAt?.toIso8601String(),
           },
         )
         .toList(growable: false),
