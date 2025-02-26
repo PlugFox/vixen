@@ -1,6 +1,7 @@
 -- Captcha messages sent to users
 CREATE TABLE captcha_message (
     message_id INTEGER NOT NULL PRIMARY KEY, -- Primary key with auto-increment
+    deleted INTEGER NOT NULL DEFAULT 0, -- Whether the message is deleted or not (0 = false, 1 = true)
     user_id INTEGER NOT NULL, -- Identifier for the user
     chat_id INTEGER NOT NULL, -- Identifier for the chat
     caption TEXT NOT NULL, -- Text of the message
@@ -11,4 +12,5 @@ CREATE TABLE captcha_message (
     updated_at INTEGER NOT NULL -- Last update timestamp
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS captcha_message_user_chat_idx ON captcha_message (user_id, chat_id);
+CREATE INDEX IF NOT EXISTS captcha_message_chat_id_idx ON captcha_message (chat_id);
+CREATE INDEX IF NOT EXISTS captcha_message_user_id_idx ON captcha_message (user_id);

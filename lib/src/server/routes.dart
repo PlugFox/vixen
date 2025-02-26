@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' as io;
 
+import 'package:collection/collection.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:vixen/src/reports.dart';
@@ -28,6 +29,8 @@ final Router $router =
       // --- Reports --- //
       ..get('/report', $GET$Report)
       ..get('/admin/report', $GET$Admin$Report)
+      ..get('/admin/chart', $GET$Admin$Chart)
+      ..get('/admin/chart.webp', $GET$Admin$ChartWebp)
       // --- Not found --- //
       //..get('/stat', $stat)
       ..all('/<ignored|.*>', $ALL$NotFound);
@@ -305,4 +308,88 @@ Future<Response> $GET$Admin$Report(Request request) async {
   final db = Dependencies.of(request).database;
   final report = await _getReport(db: db, from: from, to: to);
   return Responses.ok(report);
+}
+
+Future<Response> $GET$Admin$Chart(Request request) async {
+  var from =
+          switch (request.url.queryParameters['from']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now().subtract(const Duration(days: 1)),
+      to =
+          switch (request.url.queryParameters['to']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now();
+  if (from.isAfter(to)) (from, to) = (to, from);
+  final db = Dependencies.of(request).database;
+  final reports = Reports(db: db);
+  final data = await reports.chartData(from, to);
+  final dates = data.parts.map((e) => DateTime.fromMillisecondsSinceEpoch(e * 1000).toUtc()).toList(growable: false);
+  final parts = data.parts
+      .mapIndexed(
+        (index, element) => <String, Object?>{
+          'index': index,
+          'from': index == 0 ? from.toIso8601String() : dates[index - 1].toIso8601String(),
+          'to': dates[index].toIso8601String(),
+        },
+      )
+      .toList(growable: false);
+  return Responses.ok(<String, Object?>{
+    'from': from.toIso8601String(),
+    'to': to.toIso8601String(),
+    'length': parts.length,
+    'chart': <String, List<Object?>>{
+      'parts': parts,
+      'sent': data.sent,
+      'captcha': data.captcha,
+      'verified': data.verified,
+      'banned': data.banned,
+      'deleted': data.deleted,
+    },
+  });
+}
+
+Future<Response> $GET$Admin$ChartWebp(Request request) async {
+  var from =
+          switch (request.url.queryParameters['from']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now().subtract(const Duration(days: 1)),
+      to =
+          switch (request.url.queryParameters['to']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now();
+  if (from.isAfter(to)) (from, to) = (to, from);
+  final db = Dependencies.of(request).database;
+  final reports = Reports(db: db);
+  final data = await reports.chartData(from, to);
+  final dates = data.parts.map((e) => DateTime.fromMillisecondsSinceEpoch(e * 1000).toUtc()).toList(growable: false);
+  final parts = data.parts
+      .mapIndexed(
+        (index, element) => <String, Object?>{
+          'index': index,
+          'from': index == 0 ? from.toIso8601String() : dates[index - 1].toIso8601String(),
+          'to': dates[index].toIso8601String(),
+        },
+      )
+      .toList(growable: false);
+  return Responses.ok(<String, Object?>{
+    'from': from.toIso8601String(),
+    'to': to.toIso8601String(),
+    'length': parts.length,
+    'chart': <String, List<Object?>>{
+      'parts': parts,
+      'sent': data.sent,
+      'captcha': data.captcha,
+      'verified': data.verified,
+      'banned': data.banned,
+      'deleted': data.deleted,
+    },
+  });
 }

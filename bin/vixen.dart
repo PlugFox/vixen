@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io' as io;
+import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
@@ -55,7 +56,7 @@ void main(List<String> args) {
         await startServer(arguments: arguments, database: db);
         l.i('Server is running on ${arguments.address}:${arguments.port}');
 
-        final lastUpdateId = db.getKey<int>(updateIdKey);
+        final lastUpdateId = arguments.offset ?? db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
         bot
           ..addHandler(handler(arguments: arguments, bot: bot, db: db, captchaQueue: captchaQueue))
@@ -157,13 +158,26 @@ void Function(int updateId, Map<String, Object?> update) handler({
   });
 
   // Periodically remove outdated captcha messages
-  Timer.periodic(const Duration(seconds: captchaLifetime ~/ 10), (_) async {
+  Timer.periodic(const Duration(seconds: captchaLifetime ~/ 3), (_) async {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final deleted =
-        await (db.delete(db.captchaMessage)..where((tbl) => tbl.expiresAt.isSmallerThanValue(now))).goAndReturn();
-    if (deleted.isEmpty) return;
-    for (final captcha in deleted) bot.deleteMessage(captcha.chatId, captcha.messageId).ignore();
-    l.i('Deleted ${deleted.length} outdated captcha messages');
+    final toDelete = await db.transaction<List<CaptchaMessageData>>(() async {
+      final toDelete =
+          await (db.select(db.captchaMessage)
+            ..where((tbl) => tbl.expiresAt.isSmallerThanValue(now) & tbl.deleted.equals(0))).get();
+      if (toDelete.isEmpty) return const [];
+      final count = await (db.update(db.captchaMessage)
+        ..where((tbl) => tbl.expiresAt.isSmallerThanValue(now) & tbl.deleted.equals(0))).write(
+        CaptchaMessageCompanion(
+          updatedAt: Value(DateTime.now().millisecondsSinceEpoch ~/ 1000),
+          deleted: const Value(1),
+        ),
+      );
+      assert(count == toDelete.length, 'Failed to update ${toDelete.length} outdated captcha messages');
+      return toDelete;
+    });
+    if (toDelete.isEmpty) return;
+    for (final captcha in toDelete) bot.deleteMessage(captcha.chatId, captcha.messageId).ignore();
+    l.i('Deleted ${toDelete.length} outdated captcha messages');
   });
 
   // Periodically remove expired bans
@@ -184,7 +198,8 @@ void Function(int updateId, Map<String, Object?> update) handler({
   });
 
   return (updateId, update) {
-    lastOffset = updateId;
+    assert(updateId > 0 && updateId + 1 > lastOffset, 'Invalid update id: $updateId');
+    lastOffset = math.max(lastOffset, updateId + 1);
     l.d('Received update', update);
     if (update['message'] case Map<String, Object?> message) {
       messageHandler(message);

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:meta/meta.dart';
 import 'package:vixen/src/constant/constants.dart' as constants;
 import 'package:vixen/src/database.dart';
@@ -122,24 +124,58 @@ final class Reports {
     return result.map((e) => (cid: e.read<int>('cid'), count: e.read<int>('count'))).toList(growable: false);
   }
 
-  Future<({List<int> sent, List<int> verified, List<int> banned, List<int> deleted})> chartData(
-    DateTime from,
-    DateTime to,
-    int chatId,
-  ) async {
-    final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
+  /// Data for the chart.
+  /// Returns the count of sent, captcha, verified, banned, and deleted messages
+  /// in the given time frame split into 10 parts.
+  Future<
+    ({List<int> parts, List<int> sent, List<int> captcha, List<int> verified, List<int> banned, List<int> deleted})
+  >
+  chartData(DateTime from, DateTime to, [int? chatId]) async {
+    var fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
+    if (fromUnix > toUnix) (fromUnix, toUnix) = (toUnix, fromUnix);
+
     final result =
         await _db
             .customSelect(
               _chartDataQuery,
-              variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(chatId)],
+              variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(chatId ?? 0)],
             )
             .get();
-    final sent = List.filled(10, 0, growable: false);
-    final verified = List.filled(10, 0, growable: false);
-    final banned = List.filled(10, 0, growable: false);
-    final deleted = List.filled(10, 0, growable: false);
-    throw UnimplementedError();
+
+    final parts = Uint64List(10),
+        sent = Uint32List(10),
+        captcha = Uint32List(10),
+        verified = Uint32List(10),
+        banned = Uint32List(10),
+        deleted = Uint32List(10);
+
+    final offset = ((toUnix - fromUnix) / 10).ceil();
+    for (var i = 0; i < 9; i++) parts[i] = fromUnix + offset * (i + 1);
+    parts[9] = toUnix;
+
+    for (var i = 0; i < result.length; i++) {
+      final date = result[i].read<int>('date');
+      var index = (date - fromUnix) ~/ offset;
+      assert(index >= 0 && index < 10, 'Invalid index: $index');
+      index = index.clamp(0, 9);
+      final type = result[i].read<String>('type');
+      switch (type) {
+        case 'sent':
+          sent[index]++;
+        case 'captcha':
+          captcha[index]++;
+        case 'verified':
+          verified[index]++;
+        case 'banned':
+          banned[index]++;
+        case 'deleted':
+          deleted[index]++;
+        default:
+          assert(false, 'Unknown type: $type');
+          continue;
+      }
+    }
+    return (parts: parts, sent: sent, captcha: captcha, verified: verified, banned: banned, deleted: deleted);
   }
 }
 
@@ -196,22 +232,27 @@ WITH EventsTmp AS (
   SELECT 'sent' AS type, tbl.date AS date
   FROM allowed_message AS tbl
   WHERE tbl.date BETWEEN :from AND :to
-  AND tbl.chat_id = :cid
+  AND (:cid == 0 OR tbl.chat_id = :cid)
+  UNION ALL
+  SELECT 'verified' AS type, tbl.verified_at AS date
+  FROM verified AS tbl
+  WHERE tbl.verified_at BETWEEN :from AND :to
+  AND (:cid == 0 OR tbl.chat_id = :cid)
   UNION ALL
   SELECT 'banned' AS type, tbl.banned_at AS date
   FROM banned AS tbl
   WHERE tbl.banned_at BETWEEN :from AND :to
-  AND tbl.chat_id = :cid
-  UNION ALL
-  SELECT 'verified' AS type, tbl.verified_at AS date
-  FROM banned AS tbl
-  WHERE tbl.verified_at BETWEEN :from AND :to
-  AND tbl.chat_id = :cid
+  AND (:cid == 0 OR tbl.chat_id = :cid)
   UNION ALL
   SELECT 'deleted' AS type, tbl.date AS date
   FROM deleted_message AS tbl
   WHERE tbl.date BETWEEN :from AND :to
-  AND tbl.chat_id = :cid
+  AND (:cid == 0 OR tbl.chat_id = :cid)
+  UNION ALL
+  SELECT 'captcha' AS type, tbl.updated_at AS date
+  FROM captcha_message AS tbl
+  WHERE tbl.updated_at BETWEEN :from AND :to
+  AND (:cid == 0 OR tbl.chat_id = :cid)
 )
 SELECT type, date FROM EventsTmp ORDER BY date ASC;
 ''';

@@ -116,7 +116,7 @@ class Bot {
 
   /// Fetch updates from the Telegram API.
   @pragma('vm:prefer-inline')
-  Future<List<Map<String, Object?>>> _getUpdates(Uri url) async {
+  Future<List<({int id, Map<String, Object?> update})>> _getUpdates(Uri url) async {
     final response = await _client.get(url);
     if (response.statusCode != 200) {
       l.w('Failed to fetch updates: status code ${response.statusCode}', StackTrace.current);
@@ -132,25 +132,84 @@ class Bot {
       l.w('Failed to fetch updates: wrong result type', StackTrace.current, update);
       return const [];
     }
-    return result.whereType<Map<String, Object?>>().where((u) => u['update_id'] is int).toList(growable: false);
+    return result
+      .whereType<Map<String, Object?>>()
+      .map<({int id, Map<String, Object?> update})>(
+        (u) => (
+          id: switch (u['update_id']) {
+            int id => id,
+            _ => -1,
+          },
+          update: u,
+        ),
+      )
+      .where((u) => u.id >= 0)
+      .toList(growable: false)..sort((a, b) => a.id.compareTo(b.id));
   }
 
   /// Handle updates by calling all the handlers for each update.
   @pragma('vm:prefer-inline')
-  void _handleUpdates(List<Map<String, Object?>> updates) {
-    for (final update in updates) {
-      if (update['update_id'] case int id) {
-        _offset = math.max(id + 1, _offset);
-        for (final handler in _handlers) {
-          try {
-            handler(id, update);
-          } on Object catch (error, stackTrace) {
-            l.e('An error occurred while handling update #$id: $error', stackTrace, {'id': id, 'update': update});
-            continue;
-          }
+  void _handleUpdates(List<({int id, Map<String, Object?> update})> updates) {
+    for (final u in updates) {
+      assert(u.id >= 0 && u.id + 1 > _offset, 'Invalid update ID: ${u.id}');
+      _offset = math.max(u.id + 1, _offset);
+      for (final handler in _handlers) {
+        try {
+          handler(u.id, u.update);
+        } on Object catch (error, stackTrace) {
+          l.e('An error occurred while handling update #${u.id}: $error', stackTrace, {'id': u.id, 'update': u});
+          continue;
         }
       }
     }
+  }
+
+  /// Start polling for [updates](https://core.telegram.org/bots/api#getupdates).
+  /// [types] - The [types of updates](https://core.telegram.org/bots/api#update) to fetch.
+  /// By default, it fetches messages and callback queries.
+  void start({Set<String> types = const <String>{'message', 'callback_query'}}) => runZonedGuarded<void>(
+    () {
+      stop(); // Stop any previous poller
+      final allowedUpdates = jsonEncode(types.toList(growable: false));
+      final url = _buildMethodUri('getUpdates');
+      final poller = _poller = Completer<void>()..future.ignore();
+      final throttleStopwatch = Stopwatch()..start();
+      Future<void>(() async {
+        while (true) {
+          try {
+            if (poller.isCompleted) return;
+            throttleStopwatch.reset();
+            final updates = await _getUpdates(
+              url.replace(
+                queryParameters: {
+                  if (_offset >= 0) 'offset': _offset.toString(),
+                  'limit': '100',
+                  'timeout': _interval.inSeconds.toString(),
+                  'allowed_updates': allowedUpdates,
+                },
+              ),
+            ).timeout(_interval * 2);
+            if (poller.isCompleted) return;
+            _handleUpdates(updates);
+            // Throttle the polling to avoid hitting the rate limit
+            if (throttleStopwatch.elapsed < const Duration(milliseconds: 250)) {
+              l.d('Throttling polling');
+              await Future<void>.delayed(const Duration(seconds: 1) - throttleStopwatch.elapsed);
+            }
+          } on Object catch (error, stackTrace) {
+            l.e('An error occurred while fetching updates: $error', stackTrace);
+          }
+        }
+      });
+    },
+    (error, stackTrace) {
+      l.e('An error occurred while polling for updates: $error', stackTrace);
+    },
+  );
+
+  /// Stop polling for updates.
+  void stop() {
+    _poller?.complete();
   }
 
   /// Send a message to a chat.
@@ -350,53 +409,5 @@ class Bot {
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to unban user: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to unban user: status code ${response.statusCode}');
-  }
-
-  /// Start polling for [updates](https://core.telegram.org/bots/api#getupdates).
-  /// [types] - The [types of updates](https://core.telegram.org/bots/api#update) to fetch.
-  /// By default, it fetches messages and callback queries.
-  void start({Set<String> types = const <String>{'message', 'callback_query'}}) => runZonedGuarded<void>(
-    () {
-      stop(); // Stop any previous poller
-      final allowedUpdates = jsonEncode(types.toList(growable: false));
-      final url = _buildMethodUri('getUpdates');
-      final poller = _poller = Completer<void>()..future.ignore();
-      final throttleStopwatch = Stopwatch()..start();
-      Future<void>(() async {
-        while (true) {
-          try {
-            if (poller.isCompleted) return;
-            throttleStopwatch.reset();
-            final updates = await _getUpdates(
-              url.replace(
-                queryParameters: {
-                  if (_offset > 0) 'offset': _offset.toString(),
-                  'limit': '100',
-                  'timeout': _interval.inSeconds.toString(),
-                  'allowed_updates': allowedUpdates,
-                },
-              ),
-            ).timeout(_interval * 2);
-            if (poller.isCompleted) return;
-            _handleUpdates(updates);
-            // Throttle the polling to avoid hitting the rate limit
-            if (throttleStopwatch.elapsed < const Duration(milliseconds: 250)) {
-              l.d('Throttling polling');
-              await Future<void>.delayed(const Duration(seconds: 1) - throttleStopwatch.elapsed);
-            }
-          } on Object catch (error, stackTrace) {
-            l.e('An error occurred while fetching updates: $error', stackTrace);
-          }
-        }
-      });
-    },
-    (error, stackTrace) {
-      l.e('An error occurred while polling for updates: $error', stackTrace);
-    },
-  );
-
-  /// Stop polling for updates.
-  void stop() {
-    _poller?.complete();
   }
 }
