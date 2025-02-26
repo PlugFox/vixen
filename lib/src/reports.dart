@@ -131,7 +131,7 @@ final class Reports {
 
   /// Data for the chart.
   /// Returns the count of sent, captcha, verified, banned, and deleted messages
-  /// in the given time frame split into 10 parts.
+  /// in the given time frame split into 24 parts.
   Future<ReportChartData> chartData({
     required DateTime from,
     required DateTime to,
@@ -141,21 +141,22 @@ final class Reports {
     var fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
     if (fromUnix > toUnix) (fromUnix, toUnix) = (toUnix, fromUnix);
 
-    final parts = Uint64List(10),
-        sent = Uint32List(10),
-        captcha = Uint32List(10),
-        verified = Uint32List(10),
-        banned = Uint32List(10),
-        deleted = Uint32List(10);
+    const count = 24;
+    final parts = Uint64List(count),
+        sent = Uint32List(count),
+        captcha = Uint32List(count),
+        verified = Uint32List(count),
+        banned = Uint32List(count),
+        deleted = Uint32List(count);
 
-    final offset = ((toUnix - fromUnix) / 10).ceil();
-    for (var i = 0; i < 9; i++) parts[i] = fromUnix + offset * (i + 1);
-    parts[9] = toUnix;
+    final offset = ((toUnix - fromUnix) / count).ceil();
+    for (var i = 0; i < count - 1; i++) parts[i] = fromUnix + offset * (i + 1);
+    parts[count - 1] = toUnix;
 
     if (random) {
       final random = math.Random();
 
-      for (var i = 0; i < 10; i++) {
+      for (var i = 0; i < count; i++) {
         sent[i] = random.nextInt(100);
         captcha[i] = random.nextInt(100);
         verified[i] = random.nextInt(100);
@@ -177,8 +178,8 @@ final class Reports {
     for (var i = 0; i < result.length; i++) {
       final date = result[i].read<int>('date');
       var index = (date - fromUnix) ~/ offset;
-      assert(index >= 0 && index < 10, 'Invalid index: $index');
-      index = index.clamp(0, 9);
+      assert(index >= 0 && index < count, 'Invalid index: $index');
+      index = index.clamp(0, count - 1);
       final type = result[i].read<String>('type');
       switch (type) {
         case 'sent':
@@ -308,7 +309,7 @@ final class Reports {
         series.label,
         font: img.arial48,
         x: marginLeft + i * plotWidth ~/ chartSeries.length,
-        y: height4 - marginBottom + 10 * scale,
+        y: height4 - marginBottom + 12 * scale,
         color: series.color,
       );
     }
