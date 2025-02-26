@@ -62,6 +62,14 @@ ArgParser _buildParser() =>
         valueHelp: '8080',
       )
       ..addOption(
+        'offset',
+        abbr: 'o',
+        mandatory: false,
+        aliases: ['update'],
+        help: 'Offset for Telegram updates',
+        valueHelp: '123',
+      )
+      ..addOption(
         'verbose',
         abbr: 'v',
         aliases: ['logging', 'logger', 'logs', 'log'],
@@ -79,7 +87,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'chats', 'secret', 'verbose', 'db', 'address', 'port'};
+      const options = <String>{'token', 'chats', 'secret', 'verbose', 'db', 'address', 'port', 'offset'};
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //
@@ -138,6 +146,12 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
         database: table['db'] ?? 'data/vixen.db',
         address: table['address'] ?? io.InternetAddress.anyIPv4,
         port: int.tryParse(table['port'] ?? '8080') ?? 8080,
+        offset: switch (table['offset']?.trim().toLowerCase()) {
+          'null' || 'none' || 'nil' || 'n/a' || 'n' || 'no' || 'off' || 'false' => null,
+          '0' || 'zero' => 0,
+          String v when v.isNotEmpty => int.tryParse(v),
+          _ => null,
+        },
       );
     } on FormatException {
       io.stderr
@@ -166,6 +180,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     required this.database,
     required this.address,
     required this.port,
+    required this.offset,
     required Map<String, String> arguments,
   }) : _arguments = arguments;
 
@@ -189,6 +204,9 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// Port to bind the server to
   final int port;
+
+  /// Offset for Telegram updates
+  final int? offset;
 
   /// Arguments
   final Map<String, String> _arguments;

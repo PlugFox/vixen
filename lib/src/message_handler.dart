@@ -228,8 +228,8 @@ class MessageHandler {
             });
             if (entry != null && entry.count >= spamDuplicateLimit && entry.message == text) {
               // Ban the user for spamming more than spamDuplicateLimit times the same message
-final untilDate =
-DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceEpoch ~/ 1000;
+              final untilDate =
+                  DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceEpoch ~/ 1000;
               _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
               _db
                   .banUser(
@@ -251,7 +251,7 @@ DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceE
         {
           final captcha =
               await (_db.select(_db.captchaMessage)
-                    ..where((tbl) => tbl.userId.equals(userId) & tbl.chatId.equals(chatId))
+                    ..where((tbl) => tbl.userId.equals(userId) & tbl.chatId.equals(chatId) & tbl.deleted.equals(0))
                     ..limit(1))
                   .getSingleOrNull();
           // User already has a captcha - do nothing
@@ -299,6 +299,7 @@ DateTime.now().add(Duration(days: entry.count.clamp(7, 360))).millisecondsSinceE
                 createdAt: now,
                 updatedAt: now,
                 expiresAt: now + captchaLifetime,
+                deleted: const Value<int>(0),
               ),
               mode: InsertMode.insertOrReplace,
             )

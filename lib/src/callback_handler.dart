@@ -37,7 +37,7 @@ class CallbackHandler {
         Future<void>(() async {
           final captcha =
               await (_db.select(_db.captchaMessage)
-                    ..where((tbl) => tbl.messageId.equals(messageId))
+                    ..where((tbl) => tbl.messageId.equals(messageId) & tbl.deleted.equals(0))
                     ..limit(1))
                   .getSingleOrNull();
           if (captcha == null) {
@@ -72,6 +72,7 @@ class CallbackHandler {
                     solution: newCaptcha.text,
                     updatedAt: now,
                     expiresAt: now + captchaLifetime,
+                    deleted: 0,
                   ),
                 )
                 .ignore();
@@ -112,7 +113,16 @@ class CallbackHandler {
           if (input == captcha.solution) {
             _bot.answerCallbackQuery(callbackQueryId, 'Correct!').ignore();
             _bot.deleteMessage(chatId, messageId).ignore();
-            (_db.delete(_db.captchaMessage)..whereSamePrimaryKey(captcha)).go().ignore();
+            _db
+                .update(_db.captchaMessage)
+                .replace(
+                  captcha.copyWith(
+                    solution: input,
+                    updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                    deleted: 1,
+                  ),
+                )
+                .ignore();
             final username = from['username']?.toString() ?? '';
             final name = '${from['first_name'] ?? ''} ${from['last_name'] ?? ''}';
             _db
@@ -148,7 +158,7 @@ class CallbackHandler {
             final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
             _db
                 .update(_db.captchaMessage)
-                .replace(captcha.copyWith(input: input, updatedAt: now, expiresAt: now + captchaLifetime))
+                .replace(captcha.copyWith(input: input, updatedAt: now, expiresAt: now + captchaLifetime, deleted: 0))
                 .ignore();
             return;
           }
