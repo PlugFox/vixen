@@ -296,12 +296,6 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
           final deletedMessagesCount = await reports
               .deletedCount(from, to, cid)
               .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
-          if (mostActiveUsers.isEmpty &&
-              verifiedUsers.isEmpty &&
-              bannedUsers.isEmpty &&
-              sentMessagesCount == 0 &&
-              deletedMessagesCount == 0)
-            continue;
 
           // Create new report
           buffer
@@ -326,8 +320,8 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             } else {
               buffer.writeln('*🥇 Most active users:*');
             }
-            for (final e in mostActiveUsers) {
-              buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} messages\\)');
+            for (final e in mostActiveUsers.take(10)) {
+              buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
             }
             buffer.writeln();
           }
@@ -350,14 +344,28 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             } else {
               buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
             }
-            for (final e in bannedUsers) {
-              buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.reason}\\)');
+            for (final e in bannedUsers.take(10)) {
+              buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
+              /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
+            }
+            if (bannedUsers.length > 10) {
+              buffer.writeln('... and ${bannedUsers.length - 10} more');
             }
             buffer.writeln();
           }
 
+          final data = await reports.chartData(from: from, to: to /* chatId: cid, */, random: false);
+          final chart = await reports.chartPng(data: data, chatId: cid, width: 480, height: 240);
+
           // Send new report
-          final messageId = await bot.sendMessage(cid, buffer.toString());
+          final messageId = await bot.sendPhoto(
+            chatId: cid,
+            bytes: chart,
+            filename: 'chart-${DateFormat('yyyy-mm-dd').format(to)}.png',
+            caption: buffer.toString(),
+            notification: false,
+          );
+
           db
               .into(db.reportMessage)
               .insert(

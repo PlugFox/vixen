@@ -132,17 +132,14 @@ final class Reports {
   /// Data for the chart.
   /// Returns the count of sent, captcha, verified, banned, and deleted messages
   /// in the given time frame split into 10 parts.
-  Future<ReportChartData> chartData(DateTime from, DateTime to, [int? chatId]) async {
+  Future<ReportChartData> chartData({
+    required DateTime from,
+    required DateTime to,
+    int? chatId,
+    bool random = false,
+  }) async {
     var fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
     if (fromUnix > toUnix) (fromUnix, toUnix) = (toUnix, fromUnix);
-
-    final result =
-        await _db
-            .customSelect(
-              _chartDataQuery,
-              variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(chatId ?? 0)],
-            )
-            .get();
 
     final parts = Uint64List(10),
         sent = Uint32List(10),
@@ -154,6 +151,28 @@ final class Reports {
     final offset = ((toUnix - fromUnix) / 10).ceil();
     for (var i = 0; i < 9; i++) parts[i] = fromUnix + offset * (i + 1);
     parts[9] = toUnix;
+
+    if (random) {
+      final random = math.Random();
+
+      for (var i = 0; i < 10; i++) {
+        sent[i] = random.nextInt(100);
+        captcha[i] = random.nextInt(100);
+        verified[i] = random.nextInt(100);
+        banned[i] = random.nextInt(100);
+        deleted[i] = random.nextInt(100);
+      }
+
+      return (parts: parts, sent: sent, captcha: captcha, verified: verified, banned: banned, deleted: deleted);
+    }
+
+    final result =
+        await _db
+            .customSelect(
+              _chartDataQuery,
+              variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(chatId ?? 0)],
+            )
+            .get();
 
     for (var i = 0; i < result.length; i++) {
       final date = result[i].read<int>('date');
@@ -194,7 +213,11 @@ final class Reports {
     int paddingBottom = 32,
   }) async {
     assert(data == null || (from == null && to == null), 'Either data or from and to must be null');
-    data ??= await chartData(from ?? DateTime.now().subtract(const Duration(days: 1)), to ?? DateTime.now(), chatId);
+    data ??= await chartData(
+      from: from ?? DateTime.now().subtract(const Duration(days: 1)),
+      to: to ?? DateTime.now(),
+      chatId: chatId,
+    );
 
     // Создаем изображение с увеличенным разрешением для повышения качества
     const scale = 3;

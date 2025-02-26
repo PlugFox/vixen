@@ -327,7 +327,7 @@ Future<Response> $GET$Admin$Chart(Request request) async {
   if (from.isAfter(to)) (from, to) = (to, from);
   final db = Dependencies.of(request).database;
   final reports = Reports(db: db);
-  final data = await reports.chartData(from, to);
+  final data = await reports.chartData(from: from, to: to);
   final dates = data.parts.map((e) => DateTime.fromMillisecondsSinceEpoch(e * 1000).toUtc()).toList(growable: false);
   final parts = data.parts
       .mapIndexed(
@@ -369,7 +369,7 @@ Future<Response> $GET$Admin$ChartPng(Request request) async {
   if (from.isAfter(to)) (from, to) = (to, from);
   final db = Dependencies.of(request).database;
   final reports = Reports(db: db);
-  final data = await reports.chartData(from, to);
+  final data = await reports.chartData(from: from, to: to);
   final bytes = await reports.chartPng(data: data, width: 480, height: 240);
   return Responses.ok(
     bytes,
