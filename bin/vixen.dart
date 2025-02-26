@@ -316,44 +316,44 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
 
           if (mostActiveUsers.isNotEmpty) {
             if (mostActiveUsers.length == 1) {
-              buffer.write('*🥇 Most active user* ');
+              final u = mostActiveUsers.single;
+              buffer
+                ..write('*🥇 Most active user:* ')
+                ..writeln('${Bot.userMention(u.uid, u.username)} \\(${u.count} msg\\)');
             } else {
               buffer.writeln('*🥇 Most active users:*');
               mostActiveUsers.sort((a, b) => b.count.compareTo(a.count));
-            }
-            for (final e in mostActiveUsers.take(5)) {
-              buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
+              for (final e in mostActiveUsers.take(5))
+                buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
             }
             buffer.writeln();
           }
 
           if (verifiedUsers.isNotEmpty) {
             if (verifiedUsers.length == 1) {
-              buffer.write('*✅ Verified user* ');
+              final u = verifiedUsers.single;
+              buffer
+                ..write('*✅ Verified user:* ')
+                ..writeln(Bot.userMention(u.uid, u.username));
             } else {
               buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
-            }
-            for (final e in verifiedUsers.take(5)) {
-              buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
-            }
-            if (verifiedUsers.length > 5) {
-              buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - 5} more_');
+              for (final e in verifiedUsers.take(5)) buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
+              if (verifiedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - 5} more_');
             }
             buffer.writeln();
           }
 
           if (bannedUsers.isNotEmpty) {
             if (bannedUsers.length == 1) {
-              buffer.write('*🚫 Banned user* ');
+              final u = bannedUsers.single;
+              buffer
+                ..write('*🚫 Banned user:* ')
+                ..writeln(Bot.escapeMarkdownV2(u.username));
             } else {
               buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
-            }
-            for (final e in bannedUsers.take(5)) {
-              buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
               /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
-            }
-            if (bannedUsers.length > 5) {
-              buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - 5} more_');
+              for (final e in bannedUsers.take(5)) buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
+              if (bannedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - 5} more_');
             }
             buffer.writeln();
           }
