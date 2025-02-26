@@ -299,7 +299,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
 
           // Create new report
           buffer
-            ..writeln('*📅 Report for ${Bot.escapeMarkdownV2(DateFormat('dd MMM yyyy', 'en_US').format(from))}*')
+            ..writeln('*📅 Report for ${Bot.escapeMarkdownV2(DateFormat('dd MMMM yyyy', 'en_US').format(from))}*')
             ..writeln();
 
           if (sentMessagesCount > 0) {
@@ -319,8 +319,9 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               buffer.write('*🥇 Most active user* ');
             } else {
               buffer.writeln('*🥇 Most active users:*');
+              mostActiveUsers.sort((a, b) => b.count.compareTo(a.count));
             }
-            for (final e in mostActiveUsers.take(10)) {
+            for (final e in mostActiveUsers.take(5)) {
               buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
             }
             buffer.writeln();
@@ -332,8 +333,11 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             } else {
               buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
             }
-            for (final e in verifiedUsers) {
+            for (final e in verifiedUsers.take(5)) {
               buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
+            }
+            if (verifiedUsers.length > 5) {
+              buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - 5} more_');
             }
             buffer.writeln();
           }
@@ -344,16 +348,17 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             } else {
               buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
             }
-            for (final e in bannedUsers.take(10)) {
+            for (final e in bannedUsers.take(5)) {
               buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
               /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
             }
-            if (bannedUsers.length > 10) {
-              buffer.writeln('... and ${bannedUsers.length - 10} more');
+            if (bannedUsers.length > 5) {
+              buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - 5} more_');
             }
             buffer.writeln();
           }
 
+          // Generate the chart
           final data = await reports.chartData(from: from, to: to /* chatId: cid, */, random: false);
           final chart = await reports.chartPng(data: data, chatId: cid, width: 480, height: 240);
 
