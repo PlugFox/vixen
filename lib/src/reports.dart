@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:image/image.dart' as img;
 import 'package:meta/meta.dart';
 import 'package:vixen/src/constant/constants.dart' as constants;
 import 'package:vixen/src/database.dart';
@@ -176,6 +177,112 @@ final class Reports {
       }
     }
     return (parts: parts, sent: sent, captcha: captcha, verified: verified, banned: banned, deleted: deleted);
+  }
+
+  /// Draw a .png image with the chart data for the given time frame.
+  Future<Uint8List> chartPng({DateTime? from, DateTime? to, int? chatId, int width = 800, int height = 600}) async {
+    final data = await chartData(
+      from ?? DateTime.now().subtract(const Duration(days: 1)),
+      to ?? DateTime.now(),
+      chatId,
+    );
+
+    // Создаем изображение с увеличенным разрешением для повышения качества
+    final width4 = width * 4, height4 = height * 4;
+    var image = img.Image(width: width4, height: height4);
+    // Заливаем фон цветом (цвет фона: #37474F)
+    img.fill(image, color: img.ColorUint8.rgb(0x37, 0x47, 0x4F));
+
+    // Определяем отступы для области графика
+    const marginLeft = 80, marginRight = 40, marginTop = 40, marginBottom = 80;
+    final plotWidth = width4 - marginLeft - marginRight;
+    final plotHeight = height4 - marginTop - marginBottom;
+
+    // Рисуем оси графика
+    final axisColor = img.ColorUint8.rgb(255, 255, 255);
+    // Ось X
+    img.drawLine(
+      image,
+      x1: marginLeft,
+      y1: height4 - marginBottom,
+      x2: width4 - marginRight,
+      y2: height4 - marginBottom,
+      color: axisColor,
+    );
+    // Ось Y
+    img.drawLine(image, x1: marginLeft, y1: marginTop, x2: marginLeft, y2: height4 - marginBottom, color: axisColor);
+
+    // Определяем максимальное значение для масштабирования оси Y
+    var maxValue = 0;
+    final datasets = [data.sent, data.captcha, data.verified, data.banned, data.deleted];
+    for (final dataset in datasets) {
+      for (final value in dataset) {
+        if (value > maxValue) maxValue = value;
+      }
+    }
+    if (maxValue == 0) maxValue = 1; // избежание деления на ноль
+
+    // Определяем цвета для каждого набора данных
+    final colorSent = img.ColorUint8.rgb(0, 255, 0); // зеленый
+    final colorCaptcha = img.ColorUint8.rgb(255, 255, 0); // желтый
+    final colorVerified = img.ColorUint8.rgb(0, 0, 255); // синий
+    final colorBanned = img.ColorUint8.rgb(255, 0, 0); // красный
+    final colorDeleted = img.ColorUint8.rgb(128, 128, 128); // серый
+
+    // Собираем серии для графика
+    final chartSeries = [
+      (data: data.sent, color: colorSent),
+      (data: data.captcha, color: colorCaptcha),
+      (data: data.verified, color: colorVerified),
+      (data: data.banned, color: colorBanned),
+      (data: data.deleted, color: colorDeleted),
+    ];
+
+    // Вычисляем шаг по оси X (10 точек => 9 отрезков)
+    const pointsCount = 10;
+    final dx = plotWidth / (pointsCount - 1);
+
+    // Для каждой серии данных строим линию графика
+    for (final series in chartSeries) {
+      final values = series.data;
+      final seriesColor = series.color;
+      var points = Uint32List(pointsCount * 2);
+      for (var i = 0; i < pointsCount; i += 2) {
+        points[i] = marginLeft + (dx * i).round();
+        // Масштабирование по оси Y (чем больше значение, тем выше точка)
+        points[i + 1] = marginTop + plotHeight - ((values[i] / maxValue) * plotHeight).round();
+      }
+      // Соединяем точки линиями
+      for (var i = 0; i < points.length - 1; i += 4) {
+        img.drawLine(
+          image,
+          x1: points[i + 0],
+          y1: points[i + 1],
+          x2: points[i + 2],
+          y2: points[i + 3],
+          color: seriesColor,
+          thickness: 4,
+        );
+      }
+      // Отмечаем каждую точку небольшим прямоугольником (маркер)
+      for (var i = 0; i < points.length - 1; i += 2) {
+        img.fillRect(
+          image,
+          x1: points[i + 0] - 4,
+          y1: points[i + 1] - 4,
+          x2: points[i + 0] + 4,
+          y2: points[i + 1] + 4,
+          color: seriesColor,
+        );
+      }
+    }
+
+    // Resize the image to the desired size
+    final resized = img.copyResize(image, width: width, height: height, interpolation: img.Interpolation.average);
+
+    // Кодируем изображение в формат PNG
+    final pngBytes = img.encodePng(resized);
+    return Uint8List.fromList(pngBytes);
   }
 }
 
