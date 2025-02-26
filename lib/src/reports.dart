@@ -6,19 +6,8 @@ typedef ReportMostActiveUsers = List<({int uid, String username, DateTime seen, 
 
 typedef ReportSpamMessages = List<({String message, int count, DateTime date})>;
 
-/*
-{
-  'cid': e.chatId,
-  'uid': e.userId,
-  'username': e.name,
-  'reason': e.reason,
-  'bannedAt': DateTime.fromMillisecondsSinceEpoch(e.bannedAt * 1000).toIso8601String(),
-  'expiresAt': switch (e.expiresAt) {
-    int n => DateTime.fromMillisecondsSinceEpoch(n * 1000).toIso8601String(),
-    _ => null,
-  },
-}
-*/
+typedef ReportVerifiedUsers = List<({int cid, int uid, String username, DateTime verifiedAt})>;
+
 typedef ReportBannedUsers =
     List<({int cid, int uid, String username, String? reason, DateTime bannedAt, DateTime? expiresAt})>;
 
@@ -76,6 +65,24 @@ final class Reports {
         .toList(growable: false);
   }
 
+  /// Returns verified users in the given time frame.
+  Future<ReportVerifiedUsers> verifiedUsers(DateTime from, DateTime to, [int? chatId]) async {
+    final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
+    var query = _db.select(_db.verified)..where((tbl) => tbl.verifiedAt.isBetweenValues(fromUnix, toUnix));
+    if (chatId != null) query = query..where((tbl) => tbl.chatId.equals(chatId));
+    final result = await query.get();
+    return result
+        .map(
+          (e) => (
+            cid: e.chatId,
+            uid: e.userId,
+            username: e.name,
+            verifiedAt: DateTime.fromMillisecondsSinceEpoch(e.verifiedAt * 1000).toUtc(),
+          ),
+        )
+        .toList(growable: false);
+  }
+
   /// Returns banned users in the given time frame.
   Future<ReportBannedUsers> bannedUsers(DateTime from, DateTime to, [int? chatId]) async {
     final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
@@ -114,10 +121,30 @@ final class Reports {
             .get();
     return result.map((e) => (cid: e.read<int>('cid'), count: e.read<int>('count'))).toList(growable: false);
   }
+
+  Future<({List<int> sent, List<int> verified, List<int> banned, List<int> deleted})> chartData(
+    DateTime from,
+    DateTime to,
+    int chatId,
+  ) async {
+    final fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
+    final result =
+        await _db
+            .customSelect(
+              _chartDataQuery,
+              variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(chatId)],
+            )
+            .get();
+    final sent = List.filled(10, 0, growable: false);
+    final verified = List.filled(10, 0, growable: false);
+    final banned = List.filled(10, 0, growable: false);
+    final deleted = List.filled(10, 0, growable: false);
+    throw UnimplementedError();
+  }
 }
 
 const String _mostActiveUsersQuery = '''
-WITH RankedUsers AS (
+WITH RankedUsersTmp AS (
   SELECT
     msg.chat_id       AS cid,
     msg.user_id       AS uid,
@@ -128,7 +155,7 @@ WITH RankedUsers AS (
   FROM
     allowed_message AS msg
   WHERE
-    date BETWEEN :from AND :to
+    msg.date BETWEEN :from AND :to
     AND (:cid == 0 OR msg.chat_id = :cid)
   GROUP BY
     msg.chat_id,
@@ -143,7 +170,7 @@ SELECT
   seen,
   count
 FROM
-  RankedUsers
+  RankedUsersTmp
 WHERE
   rnk <= 3
 ORDER BY
@@ -162,4 +189,29 @@ WHERE
   AND del.count > :threshold
 ORDER BY
   del.count DESC;
+''';
+
+const String _chartDataQuery = '''
+WITH EventsTmp AS (
+  SELECT 'sent' AS type, tbl.date AS date
+  FROM allowed_message AS tbl
+  WHERE tbl.date BETWEEN :from AND :to
+  AND tbl.chat_id = :cid
+  UNION ALL
+  SELECT 'banned' AS type, tbl.banned_at AS date
+  FROM banned AS tbl
+  WHERE tbl.banned_at BETWEEN :from AND :to
+  AND tbl.chat_id = :cid
+  UNION ALL
+  SELECT 'verified' AS type, tbl.verified_at AS date
+  FROM banned AS tbl
+  WHERE tbl.verified_at BETWEEN :from AND :to
+  AND tbl.chat_id = :cid
+  UNION ALL
+  SELECT 'deleted' AS type, tbl.date AS date
+  FROM deleted_message AS tbl
+  WHERE tbl.date BETWEEN :from AND :to
+  AND tbl.chat_id = :cid
+)
+SELECT type, date FROM EventsTmp ORDER BY date ASC;
 ''';

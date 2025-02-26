@@ -267,6 +267,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
           final mostActiveUsers = await reports
               .mostActiveUsers(from, to, cid)
               .then<ReportMostActiveUsers>((r) => r[cid] ?? const []);
+          final verifiedUsers = await reports.verifiedUsers(from, to, cid);
           final bannedUsers = await reports.bannedUsers(from, to, cid);
           final sentMessagesCount = await db
               .customSelect(
@@ -280,7 +281,11 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
           final deletedMessagesCount = await reports
               .deletedCount(from, to, cid)
               .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
-          if (mostActiveUsers.isEmpty && bannedUsers.isEmpty && sentMessagesCount == 0 && deletedMessagesCount == 0)
+          if (mostActiveUsers.isEmpty &&
+              verifiedUsers.isEmpty &&
+              bannedUsers.isEmpty &&
+              sentMessagesCount == 0 &&
+              deletedMessagesCount == 0)
             continue;
 
           // Create new report
@@ -308,6 +313,18 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             }
             for (final e in mostActiveUsers) {
               buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} messages\\)');
+            }
+            buffer.writeln();
+          }
+
+          if (verifiedUsers.isNotEmpty) {
+            if (verifiedUsers.length == 1) {
+              buffer.write('*✅ Verified user* ');
+            } else {
+              buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
+            }
+            for (final e in verifiedUsers) {
+              buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
             }
             buffer.writeln();
           }

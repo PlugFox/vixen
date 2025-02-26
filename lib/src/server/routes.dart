@@ -224,6 +224,7 @@ Future<Map<String, Object?>> _getReport({required Database db, required DateTime
   final reports = Reports(db: db);
   final mostActiveUsers = await reports.mostActiveUsers(from, to);
   final spamMessages = await reports.spamMessages(from, to);
+  final verifiedUsers = await reports.verifiedUsers(from, to);
   final bannedUsers = await reports.bannedUsers(from, to);
   final deletedCount = await reports.deletedCount(from, to);
   return <String, Object?>{
@@ -253,6 +254,9 @@ Future<Map<String, Object?>> _getReport({required Database db, required DateTime
         .toList(growable: false),
     'deleted': deletedCount
         .map<Map<String, Object?>>((e) => <String, Object?>{'cid': e.cid, 'count': e.count})
+        .toList(growable: false),
+    'verified': verifiedUsers
+        .map((e) => {'cid': e.cid, 'uid': e.uid, 'username': e.username, 'verifiedAt': e.verifiedAt.toIso8601String()})
         .toList(growable: false),
     'banned': bannedUsers
         .map(
