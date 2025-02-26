@@ -208,10 +208,10 @@ final class Reports {
     int? chatId,
     int width = 480,
     int height = 240,
-    int paddingLeft = 48,
+    int paddingLeft = 64,
     int paddingRight = 16,
     int paddingTop = 16,
-    int paddingBottom = 32,
+    int paddingBottom = 48,
   }) async {
     assert(data == null || (from == null && to == null), 'Either data or from and to must be null');
     data ??= await chartData(
@@ -221,11 +221,19 @@ final class Reports {
     );
 
     // Создаем изображение с увеличенным разрешением для повышения качества
-    const scale = 3;
+    const scale = 2; // 1 // 2 // 4;
     final width4 = width * scale, height4 = height * scale;
-    var image = img.Image(width: width4, height: height4);
-    // Заливаем фон цветом (цвет фона: #37474F)
-    img.fill(image, color: img.ColorUint8.rgb(0x37, 0x47, 0x4F));
+    var image = img.Image(
+      width: width4,
+      height: height4,
+      format: img.Format.uint8,
+      backgroundColor: const img.ConstColorRgba8(0x37, 0x47, 0x4F, 0x7F),
+      numChannels: 4, // RGBA
+      withPalette: false,
+    );
+
+    // Заливаем фон цветом (цвет фона: #263238)
+    img.fill(image, color: const img.ConstColorRgb8(0x26, 0x32, 0x38));
 
     // Определяем отступы для области графика
     final marginLeft = paddingLeft * scale,
@@ -237,7 +245,8 @@ final class Reports {
 
     // Рисуем оси графика
     {
-      final axisColor = img.ColorUint8.rgb(255, 255, 255);
+      const thickness = 2 * scale;
+      const axisColor = img.ConstColorRgb8(0xBD, 0xBD, 0xBD); // BDBDBD
       // Ось X
       img.drawLine(
         image,
@@ -247,7 +256,7 @@ final class Reports {
         y2: height4 - marginBottom,
         color: axisColor,
         antialias: false,
-        thickness: 6,
+        thickness: thickness,
       );
       // Ось Y
       img.drawLine(
@@ -258,7 +267,7 @@ final class Reports {
         y2: height4 - marginBottom,
         color: axisColor,
         antialias: false,
-        thickness: 6,
+        thickness: thickness,
       );
     }
 
@@ -273,27 +282,28 @@ final class Reports {
 
     // Определяем цвета для каждого набора данных
     // https://materialui.co/colors
-    final colorSent = img.ColorUint8.rgb(0x02, 0x77, 0xBD); // light blue (0277BD)
-    final colorCaptcha = img.ColorUint8.rgb(0x45, 0x27, 0xA0); // deep purple (4527A0)
-    final colorVerified = img.ColorUint8.rgb(0x2E, 0x7D, 0x32); // green (2E7D32)
-    final colorBanned = img.ColorUint8.rgb(0xC6, 0x28, 0x28); // red (C62828)
-    final colorDeleted = img.ColorUint8.rgb(0xD8, 0x43, 0x15); // deep orange (D84315)
+    // img.ColorUint8.rgb(0x02, 0x77, 0xBD)
+    const colorDeleted = img.ConstColorRgb8(0xFF, 0x3D, 0x00); // deep orange (FF3D00)
+    const colorSent = img.ConstColorRgb8(0x29, 0xB6, 0xF6); // light blue (29B6F6)
+    const colorCaptcha = img.ConstColorRgb8(0x65, 0x1F, 0xFF); // deep purple (651FFF)
+    const colorBanned = img.ConstColorRgb8(0xFF, 0x17, 0x44); // red (FF1744)
+    const colorVerified = img.ConstColorRgb8(0xC6, 0xFF, 0x00); // lime (C6FF00)
 
     // Собираем серии для графика
     final chartSeries = <({String label, List<int> data, img.Color color})>[
+      (label: 'Banned', data: data.banned, color: colorBanned),
+      (label: 'Verified', data: data.verified, color: colorVerified),
+      (label: 'Deleted', data: data.deleted, color: colorDeleted),
       (label: 'Sent', data: data.sent, color: colorSent),
       (label: 'Captcha', data: data.captcha, color: colorCaptcha),
-      (label: 'Verified', data: data.verified, color: colorVerified),
-      (label: 'Banned', data: data.banned, color: colorBanned),
-      (label: 'Deleted', data: data.deleted, color: colorDeleted),
-    ];
+    ].where((e) => e.data.isNotEmpty && e.data.any((e) => e > 0)).toList(growable: false);
 
     // Draw the chart values
     for (var i = 0; i < 7; i++) {
       img.drawString(
         image,
         (maxValue - maxValue * i / 7).toStringAsFixed(0),
-        font: img.arial48,
+        font: scale == 1 ? img.arial24 : img.arial48,
         rightJustify: true,
         x: marginLeft - 8 * scale,
         y: marginTop + i * plotHeight ~/ 7,
@@ -307,35 +317,75 @@ final class Reports {
       img.drawString(
         image,
         series.label,
-        font: img.arial48,
+        font: scale == 1 ? img.arial24 : img.arial48,
         x: marginLeft + i * plotWidth ~/ chartSeries.length,
         y: height4 - marginBottom + 12 * scale,
         color: series.color,
       );
     }
 
+    // Polygons for banned
+    if (data.banned.any((e) => e > 0)) {
+      img.fillPolygon(
+        image,
+        vertices: [
+          img.Point(marginLeft, height4 - marginBottom),
+          for (var i = 0; i < data.banned.length; i++)
+            img.Point(
+              marginLeft + i * plotWidth ~/ (data.banned.length - 1),
+              height4 - marginBottom - (data.banned[i] * plotHeight ~/ maxValue),
+            ),
+          img.Point(marginLeft + plotWidth, height4 - marginBottom),
+        ],
+        color: const img.ConstColorRgba8(0xFF, 0x17, 0x44, 64),
+      );
+    }
+
+    // Polygons for verified
+    if (data.verified.any((e) => e > 0)) {
+      img.fillPolygon(
+        image,
+        vertices: [
+          img.Point(marginLeft, height4 - marginBottom),
+          for (var i = 0; i < data.verified.length; i++)
+            img.Point(
+              marginLeft + i * plotWidth ~/ (data.verified.length - 1),
+              height4 - marginBottom - (data.verified[i] * plotHeight ~/ maxValue),
+            ),
+          img.Point(marginLeft + plotWidth, height4 - marginBottom),
+        ],
+        color: const img.ConstColorRgba8(0xC6, 0xFF, 0x00, 64),
+      );
+    }
+
     // Для каждой серии данных строим линию графика
     for (final series in chartSeries) {
+      const radius = 4 * scale, thickness = 2 * scale;
       final (:String label, :List<int> data, :img.Color color) = series;
       final length = data.length;
       var dx1 = marginLeft, dy1 = height4 - marginBottom - (data[0] * plotHeight ~/ maxValue);
-      img.fillCircle(image, x: dx1, y: dy1, radius: 4, color: color);
+      img.fillCircle(image, x: dx1, y: dy1, radius: radius, color: color, antialias: true);
       for (var i = 1; i < length; i++) {
         var dx2 = marginLeft + i * plotWidth ~/ (length - 1);
         var dy2 = height4 - marginBottom - (data[i] * plotHeight ~/ maxValue);
-        img.drawLine(image, x1: dx1, y1: dy1, x2: dx2, y2: dy2, color: color, thickness: 4);
-        img.fillCircle(image, x: dx2, y: dy2, radius: 8, color: color);
+        img.drawLine(image, x1: dx1, y1: dy1, x2: dx2, y2: dy2, color: color, thickness: thickness, antialias: true);
+        img.fillCircle(image, x: dx2, y: dy2, radius: radius, color: color, antialias: true);
         dx1 = dx2;
         dy1 = dy2;
       }
     }
 
     // Resize the image to the desired size
-    final resized = img.copyResize(image, width: width, height: height, interpolation: img.Interpolation.average);
+    final resized =
+        scale == 1
+            ? image
+            : img.copyResize(image, width: width, height: height, interpolation: img.Interpolation.nearest);
 
     // Кодируем изображение в формат PNG
-    final pngBytes = img.encodePng(resized);
-    return Uint8List.fromList(pngBytes);
+    final pngBytes = img.encodePng(resized, level: 1, filter: img.PngFilter.none);
+    //final pngBytes = img.encodeGif(resized, singleFrame: true, dither: img.DitherKernel.none);
+
+    return pngBytes;
   }
 }
 
