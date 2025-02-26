@@ -369,7 +369,8 @@ Future<Response> $GET$Admin$ChartPng(Request request) async {
   if (from.isAfter(to)) (from, to) = (to, from);
   final db = Dependencies.of(request).database;
   final reports = Reports(db: db);
-  final bytes = await reports.chartPng(from: from, to: to, width: 480, height: 240);
+  final data = await reports.chartData(from, to);
+  final bytes = await reports.chartPng(data: data, width: 480, height: 240);
   return Responses.ok(
     bytes,
     headers: <String, String>{

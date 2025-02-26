@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
@@ -13,6 +14,9 @@ typedef ReportVerifiedUsers = List<({int cid, int uid, String username, DateTime
 
 typedef ReportBannedUsers =
     List<({int cid, int uid, String username, String? reason, DateTime bannedAt, DateTime? expiresAt})>;
+
+typedef ReportChartData =
+    ({List<int> parts, List<int> sent, List<int> captcha, List<int> verified, List<int> banned, List<int> deleted});
 
 @immutable
 final class Reports {
@@ -128,10 +132,7 @@ final class Reports {
   /// Data for the chart.
   /// Returns the count of sent, captcha, verified, banned, and deleted messages
   /// in the given time frame split into 10 parts.
-  Future<
-    ({List<int> parts, List<int> sent, List<int> captcha, List<int> verified, List<int> banned, List<int> deleted})
-  >
-  chartData(DateTime from, DateTime to, [int? chatId]) async {
+  Future<ReportChartData> chartData(DateTime from, DateTime to, [int? chatId]) async {
     var fromUnix = from.millisecondsSinceEpoch ~/ 1000, toUnix = to.millisecondsSinceEpoch ~/ 1000;
     if (fromUnix > toUnix) (fromUnix, toUnix) = (toUnix, fromUnix);
 
@@ -180,100 +181,128 @@ final class Reports {
   }
 
   /// Draw a .png image with the chart data for the given time frame.
-  Future<Uint8List> chartPng({DateTime? from, DateTime? to, int? chatId, int width = 800, int height = 600}) async {
-    final data = await chartData(
-      from ?? DateTime.now().subtract(const Duration(days: 1)),
-      to ?? DateTime.now(),
-      chatId,
-    );
+  Future<Uint8List> chartPng({
+    ReportChartData? data,
+    DateTime? from,
+    DateTime? to,
+    int? chatId,
+    int width = 480,
+    int height = 240,
+    int paddingLeft = 48,
+    int paddingRight = 16,
+    int paddingTop = 16,
+    int paddingBottom = 32,
+  }) async {
+    assert(data == null || (from == null && to == null), 'Either data or from and to must be null');
+    data ??= await chartData(from ?? DateTime.now().subtract(const Duration(days: 1)), to ?? DateTime.now(), chatId);
 
     // Создаем изображение с увеличенным разрешением для повышения качества
-    final width4 = width * 4, height4 = height * 4;
+    const scale = 3;
+    final width4 = width * scale, height4 = height * scale;
     var image = img.Image(width: width4, height: height4);
     // Заливаем фон цветом (цвет фона: #37474F)
     img.fill(image, color: img.ColorUint8.rgb(0x37, 0x47, 0x4F));
 
     // Определяем отступы для области графика
-    const marginLeft = 80, marginRight = 40, marginTop = 40, marginBottom = 80;
+    final marginLeft = paddingLeft * scale,
+        marginRight = paddingRight * scale,
+        marginTop = paddingTop * scale,
+        marginBottom = paddingBottom * scale;
     final plotWidth = width4 - marginLeft - marginRight;
     final plotHeight = height4 - marginTop - marginBottom;
 
     // Рисуем оси графика
-    final axisColor = img.ColorUint8.rgb(255, 255, 255);
-    // Ось X
-    img.drawLine(
-      image,
-      x1: marginLeft,
-      y1: height4 - marginBottom,
-      x2: width4 - marginRight,
-      y2: height4 - marginBottom,
-      color: axisColor,
-    );
-    // Ось Y
-    img.drawLine(image, x1: marginLeft, y1: marginTop, x2: marginLeft, y2: height4 - marginBottom, color: axisColor);
+    {
+      final axisColor = img.ColorUint8.rgb(255, 255, 255);
+      // Ось X
+      img.drawLine(
+        image,
+        x1: marginLeft,
+        y1: height4 - marginBottom,
+        x2: width4 - marginRight,
+        y2: height4 - marginBottom,
+        color: axisColor,
+        antialias: false,
+        thickness: 6,
+      );
+      // Ось Y
+      img.drawLine(
+        image,
+        x1: marginLeft,
+        y1: marginTop,
+        x2: marginLeft,
+        y2: height4 - marginBottom,
+        color: axisColor,
+        antialias: false,
+        thickness: 6,
+      );
+    }
 
     // Определяем максимальное значение для масштабирования оси Y
-    var maxValue = 0;
-    final datasets = [data.sent, data.captcha, data.verified, data.banned, data.deleted];
-    for (final dataset in datasets) {
-      for (final value in dataset) {
-        if (value > maxValue) maxValue = value;
-      }
-    }
-    if (maxValue == 0) maxValue = 1; // избежание деления на ноль
+    final maxValue = <List<int>>[
+      data.sent,
+      data.captcha,
+      data.verified,
+      data.banned,
+      data.deleted,
+    ].fold(1, (r, l) => math.max(r, l.reduce(math.max)));
 
     // Определяем цвета для каждого набора данных
-    final colorSent = img.ColorUint8.rgb(0, 255, 0); // зеленый
-    final colorCaptcha = img.ColorUint8.rgb(255, 255, 0); // желтый
-    final colorVerified = img.ColorUint8.rgb(0, 0, 255); // синий
-    final colorBanned = img.ColorUint8.rgb(255, 0, 0); // красный
-    final colorDeleted = img.ColorUint8.rgb(128, 128, 128); // серый
+    // https://materialui.co/colors
+    final colorSent = img.ColorUint8.rgb(0x02, 0x77, 0xBD); // light blue (0277BD)
+    final colorCaptcha = img.ColorUint8.rgb(0x45, 0x27, 0xA0); // deep purple (4527A0)
+    final colorVerified = img.ColorUint8.rgb(0x2E, 0x7D, 0x32); // green (2E7D32)
+    final colorBanned = img.ColorUint8.rgb(0xC6, 0x28, 0x28); // red (C62828)
+    final colorDeleted = img.ColorUint8.rgb(0xD8, 0x43, 0x15); // deep orange (D84315)
 
     // Собираем серии для графика
-    final chartSeries = [
-      (data: data.sent, color: colorSent),
-      (data: data.captcha, color: colorCaptcha),
-      (data: data.verified, color: colorVerified),
-      (data: data.banned, color: colorBanned),
-      (data: data.deleted, color: colorDeleted),
+    final chartSeries = <({String label, List<int> data, img.Color color})>[
+      (label: 'Sent', data: data.sent, color: colorSent),
+      (label: 'Captcha', data: data.captcha, color: colorCaptcha),
+      (label: 'Verified', data: data.verified, color: colorVerified),
+      (label: 'Banned', data: data.banned, color: colorBanned),
+      (label: 'Deleted', data: data.deleted, color: colorDeleted),
     ];
 
-    // Вычисляем шаг по оси X (10 точек => 9 отрезков)
-    const pointsCount = 10;
-    final dx = plotWidth / (pointsCount - 1);
+    // Draw the chart values
+    for (var i = 0; i < 7; i++) {
+      img.drawString(
+        image,
+        (maxValue - maxValue * i / 7).toStringAsFixed(0),
+        font: img.arial48,
+        rightJustify: true,
+        x: marginLeft - 8 * scale,
+        y: marginTop + i * plotHeight ~/ 7,
+        color: const img.ConstColorRgb8(0xCF, 0xD8, 0xDC), // CFD8DC
+      );
+    }
+
+    // Draw the chart legend
+    for (var i = 0; i < chartSeries.length; i++) {
+      final series = chartSeries[i];
+      img.drawString(
+        image,
+        series.label,
+        font: img.arial48,
+        x: marginLeft + i * plotWidth ~/ chartSeries.length,
+        y: height4 - marginBottom + 10 * scale,
+        color: series.color,
+      );
+    }
 
     // Для каждой серии данных строим линию графика
     for (final series in chartSeries) {
-      final values = series.data;
-      final seriesColor = series.color;
-      var points = Uint32List(pointsCount * 2);
-      for (var i = 0; i < pointsCount; i += 2) {
-        points[i] = marginLeft + (dx * i).round();
-        // Масштабирование по оси Y (чем больше значение, тем выше точка)
-        points[i + 1] = marginTop + plotHeight - ((values[i] / maxValue) * plotHeight).round();
-      }
-      // Соединяем точки линиями
-      for (var i = 0; i < points.length - 1; i += 4) {
-        img.drawLine(
-          image,
-          x1: points[i + 0],
-          y1: points[i + 1],
-          x2: points[i + 2],
-          y2: points[i + 3],
-          color: seriesColor,
-          thickness: 4,
-        );
-      }
-      // Отмечаем каждую точку небольшим прямоугольником (маркер)
-      for (var i = 0; i < points.length - 1; i += 2) {
-        img.fillRect(
-          image,
-          x1: points[i + 0] - 4,
-          y1: points[i + 1] - 4,
-          x2: points[i + 0] + 4,
-          y2: points[i + 1] + 4,
-          color: seriesColor,
-        );
+      final (:String label, :List<int> data, :img.Color color) = series;
+      final length = data.length;
+      var dx1 = marginLeft, dy1 = height4 - marginBottom - (data[0] * plotHeight ~/ maxValue);
+      img.fillCircle(image, x: dx1, y: dy1, radius: 4, color: color);
+      for (var i = 1; i < length; i++) {
+        var dx2 = marginLeft + i * plotWidth ~/ (length - 1);
+        var dy2 = height4 - marginBottom - (data[i] * plotHeight ~/ maxValue);
+        img.drawLine(image, x1: dx1, y1: dy1, x2: dx2, y2: dy2, color: color, thickness: 4);
+        img.fillCircle(image, x: dx2, y: dy2, radius: 8, color: color);
+        dx1 = dx2;
+        dy1 = dy2;
       }
     }
 
