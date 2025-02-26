@@ -307,7 +307,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               buffer.writeln('*🥇 Most active users:*');
             }
             for (final e in mostActiveUsers) {
-              buffer.writeln('${Bot.userMention(e.uid, e.username)} \\- ${e.count} messages');
+              buffer.writeln('${Bot.userMention(e.uid, e.username)} \\(${e.count} messages\\)');
             }
             buffer.writeln();
           }
@@ -316,10 +316,10 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             if (bannedUsers.length == 1) {
               buffer.write('*🚫 Banned user* ');
             } else {
-              buffer.writeln('*🚫 Banned users:*');
+              buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
             }
             for (final e in bannedUsers) {
-              buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\- ${e.reason}');
+              buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.reason}\\)');
             }
             buffer.writeln();
           }
@@ -350,7 +350,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
       }
     }
 
-    Timer(const Duration(minutes: 1) /* duration */, sendReports);
+    Timer(duration, sendReports);
   }
 
   planReport();
