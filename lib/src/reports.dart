@@ -209,8 +209,8 @@ final class Reports {
     int width = 480,
     int height = 240,
     int paddingLeft = 64,
-    int paddingRight = 16,
-    int paddingTop = 16,
+    int paddingRight = 24,
+    int paddingTop = 24,
     int paddingBottom = 48,
   }) async {
     assert(data == null || (from == null && to == null), 'Either data or from and to must be null');
