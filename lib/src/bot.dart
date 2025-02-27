@@ -416,4 +416,28 @@ class Bot {
     l.w('Failed to unban user: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to unban user: status code ${response.statusCode}');
   }
+
+  /// Get telegram chat info.
+  Future<Map<String, Object?>> getChatInfo(int chatUd) async {
+    final url = _buildMethodUri('getChat');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert({'chat_id': chatUd}),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode != 200) {
+      l.w('Failed to get chat info: status code ${response.statusCode}', StackTrace.current);
+      throw Exception('Failed to get chat info: status code ${response.statusCode}');
+    }
+    final result = _jsonDecoder.convert(response.bodyBytes);
+    if (result case <String, Object?>{'ok': true, 'result': Map<String, Object?> chatInfo}) {
+      return chatInfo;
+    } else if (result case <String, Object?>{'ok': false, 'description': String description}) {
+      l.w('Failed to get chat info: $description', StackTrace.current, result);
+      throw Exception('Failed to get chat info: $description');
+    } else {
+      l.w('Failed to get chat info', StackTrace.current, result);
+      throw Exception('Failed to get chat info');
+    }
+  }
 }

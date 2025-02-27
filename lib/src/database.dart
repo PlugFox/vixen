@@ -49,6 +49,7 @@ abstract interface class IKeyValueStorage {
     'ddl/user.drift', // Verified, Banned
     'ddl/captcha.drift', // Captcha messages
     'ddl/report_message.drift', // Messages of sent reports
+    'ddl/chat.drift', // Chat related information
   },
   tables: <Type>[],
   daos: <Type>[],
@@ -140,7 +141,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -204,6 +205,9 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
         await m.createTable(db.captchaMessage);
         await m.createIndex(db.captchaMessageChatIdIdx);
         await m.createIndex(db.captchaMessageUserIdIdx);
+      case 6:
+        // Migration from 6 to 7
+        await m.createTable(db.chatInfo);
       default:
         if (kDebugMode) throw UnimplementedError('Unsupported migration from $from to $to');
     }

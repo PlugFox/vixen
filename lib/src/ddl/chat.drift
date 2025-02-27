@@ -1,0 +1,17 @@
+-- Chat information
+CREATE TABLE IF NOT EXISTS chat_info (
+    -- Chat ID
+    chat_id INTEGER NOT NULL PRIMARY KEY,
+
+    -- Type of the chat, can be either “private”, “group”, “supergroup” or “channel”
+    type TEXT NOT NULL,
+
+    -- Title, for supergroups, channels and group chats
+    title TEXT,
+
+    -- Description, for groups, supergroups and channel chats
+    description TEXT,
+
+    -- Last updated date
+    updated_at INTEGER NOT NULL
+) STRICT;

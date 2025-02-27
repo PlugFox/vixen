@@ -64,9 +64,10 @@ void main(List<String> args) {
         l.i('Bot is running');
 
         sendReportsTimer(db, bot, arguments.chats);
+        l.i('Report sender is running');
 
-        // TODO(plugfox): Metrics, Tests
-        // Mike Matiunin <plugfox@gmail.com>, 22 February 2025
+        updateChatInfos(db, bot, arguments.chats);
+        l.i('Chat info updater is running');
       },
       (error, stackTrace) {
         l.e('An top level error occurred. $error', stackTrace);
@@ -254,9 +255,56 @@ Future<T?> shutdownHandler<T extends Object?>([final Future<T> Function()? onShu
   return shutdownCompleter.future;
 }
 
+/// Periodically updates the chat information.
+void updateChatInfos(Database db, Bot bot, Set<int> chats) {
+  Future<void> update([_]) async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final companions = <ChatInfoCompanion>[];
+    for (final cid in chats) {
+      try {
+        final result = await bot.getChatInfo(cid);
+        final type = result['type']?.toString();
+        if (type == null) continue;
+        final description = result['description']?.toString();
+        final String? title;
+        if (cid < 0) {
+          title = result['title']?.toString() ?? 'Unknown';
+        } else {
+          final username = result['username']?.toString();
+          final firstName = result['first_name']?.toString();
+          final lastName = result['last_name']?.toString();
+          title = (username ?? '$firstName $lastName').trim();
+        }
+        companions.add(
+          ChatInfoCompanion.insert(
+            chatId: Value<int>(cid),
+            type: type,
+            title: Value<String?>(title),
+            description: Value<String?>(description),
+            updatedAt: now,
+          ),
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to update chat info for $cid: $error', stackTrace);
+      }
+    }
+    if (companions.isEmpty) return;
+    try {
+      await db.batch((batch) => batch.insertAll(db.chatInfo, companions, mode: InsertMode.insertOrReplace));
+      l.d('Updated ${companions.length} chat infos');
+    } on Object catch (error, stackTrace) {
+      l.e('Failed to update chat infos: $error', stackTrace);
+    }
+  }
+
+  Timer.periodic(const Duration(hours: 1), update);
+
+  Timer(const Duration(minutes: 1), update); // Initial update after 1 minute
+}
+
+/// Periodically sends reports to the chats.
 void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
   if (chats.isEmpty) return;
-  const reportAtHour = 15; // Hour of the day to send the report
   final reports = Reports(db: db);
 
   void planReport() {
@@ -284,7 +332,10 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
 
         final buffer = StringBuffer();
         for (final cid in chats) {
+          ChatInfoData? chatInfo;
           try {
+            chatInfo = await (db.select(db.chatInfo)..where((tbl) => tbl.chatId.equals(cid))).getSingleOrNull();
+
             // Get data from the database
             final mostActiveUsers = await reports
                 .mostActiveUsers(from, to, cid)
@@ -396,7 +447,15 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
                 )
                 .ignore();
           } on Object catch (e, s) {
-            l.w('Failed to send report for chat $cid: $e', s);
+            l.w(
+              'Failed to send report for chat $cid'
+              '${switch (chatInfo?.title) {
+                String title => '($title)',
+                _ => '',
+              }}: '
+              '$e',
+              s,
+            );
           } finally {
             // Clear the buffer
             buffer.clear();
