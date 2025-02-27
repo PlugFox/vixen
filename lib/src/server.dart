@@ -12,6 +12,7 @@ Future<void> startServer({required Database database, required Arguments argumen
 
   final pipeline = const Pipeline()
       .addMiddleware(handleErrors())
+      /* .addMiddleware(normalizePath()) */
       .addMiddleware(logPipeline())
       .addMiddleware(cors())
       .addMiddleware(authorization(dependencies.arguments.secret))
