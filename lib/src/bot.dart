@@ -418,11 +418,11 @@ class Bot {
   }
 
   /// Get telegram chat info.
-  Future<Map<String, Object?>> getChatInfo(int chatUd) async {
+  Future<Map<String, Object?>> getChatInfo(int chatId) async {
     final url = _buildMethodUri('getChat');
     final response = await _client.post(
       url,
-      body: _jsonEncoder.convert({'chat_id': chatUd}),
+      body: _jsonEncoder.convert({'chat_id': chatId}),
       headers: {'Content-Type': 'application/json'},
     );
     if (response.statusCode != 200) {
