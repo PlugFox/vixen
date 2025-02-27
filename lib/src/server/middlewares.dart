@@ -70,6 +70,13 @@ Middleware authorization(String? token) {
   };
 }
 
+/// Normalize the query path.
+/* Middleware normalizePath() =>
+    (innerHandler) => (request) {
+      final normalized = request.url.normalizePath();
+      return innerHandler(normalized != request.url ? request.change(...) : request);
+    }; */
+
 /// Middleware that catches all errors and sends a JSON response with the error
 /// message. If the error is not an instance of [HttpException], it will be
 /// wrapped into one with the status code 500.

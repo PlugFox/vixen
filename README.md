@@ -19,6 +19,9 @@ It automatically deletes initial messages from unverified users and supports mul
 - **Group-Specific Monitoring**: Watches only designated groups.
 - **Metrics Support**: Tracks bot performance and user activity.
 - **Flexible Configuration**: Configurable via command-line arguments, `.env` file, or environment variables.
+- **Cross-Platform**: Runs on Windows, macOS, and Linux, Docker. AMD64 and ARM64 architectures are supported.
+- **Open-Source**: Available under the MIT License.
+- **Reports**: Sends reports about activity in the chat.
 
 ![](.img/captcha_1.webp)
 

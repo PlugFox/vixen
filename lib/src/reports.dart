@@ -211,7 +211,7 @@ final class Reports {
     int paddingLeft = 64,
     int paddingRight = 24,
     int paddingTop = 24,
-    int paddingBottom = 48,
+    int paddingBottom = 24,
   }) async {
     assert(data == null || (from == null && to == null && chatId == null), 'Either data or from and to must be null');
     data ??= await chartData(
@@ -227,8 +227,8 @@ final class Reports {
       width: width4,
       height: height4,
       format: img.Format.uint8,
-      backgroundColor: const img.ConstColorRgba8(0x37, 0x47, 0x4F, 0x7F),
-      numChannels: 4, // RGBA
+      backgroundColor: const img.ConstColorRgb8(0x37, 0x47, 0x4F),
+      numChannels: 3, // RGB
       withPalette: false,
     );
 
@@ -278,14 +278,14 @@ final class Reports {
       data.verified,
       data.banned,
       data.deleted,
-    ].fold(1, (r, l) => math.max(r, l.reduce(math.max)));
+    ].fold(7, (r, l) => math.max(r, l.reduce(math.max)));
 
     // Определяем цвета для каждого набора данных
     // https://materialui.co/colors
     // img.ColorUint8.rgb(0x02, 0x77, 0xBD)
-    const colorDeleted = img.ConstColorRgb8(0xFF, 0x3D, 0x00); // deep orange (FF3D00)
+    const colorDeleted = img.ConstColorRgb8(0xAB, 0x47, 0xBC); // purple (AB47BC)
     const colorSent = img.ConstColorRgb8(0x29, 0xB6, 0xF6); // light blue (29B6F6)
-    const colorCaptcha = img.ConstColorRgb8(0x65, 0x1F, 0xFF); // deep purple (651FFF)
+    const colorCaptcha = img.ConstColorRgb8(0xBD, 0xBD, 0xBD); // grey (BDBDBD)
     const colorBanned = img.ConstColorRgb8(0xFF, 0x17, 0x44); // red (FF1744)
     const colorVerified = img.ConstColorRgb8(0xC6, 0xFF, 0x00); // lime (C6FF00)
 
@@ -294,7 +294,7 @@ final class Reports {
       (label: 'Banned', data: data.banned, color: colorBanned),
       (label: 'Verified', data: data.verified, color: colorVerified),
       (label: 'Deleted', data: data.deleted, color: colorDeleted),
-      (label: 'Sent', data: data.sent, color: colorSent),
+      (label: 'Activity', data: data.sent, color: colorSent),
       (label: 'Captcha', data: data.captcha, color: colorCaptcha),
     ].where((e) => e.data.isNotEmpty && e.data.any((e) => e > 0)).toList(growable: false);
 
@@ -308,19 +308,6 @@ final class Reports {
         x: marginLeft - 8 * scale,
         y: marginTop + i * plotHeight ~/ 7,
         color: const img.ConstColorRgb8(0xCF, 0xD8, 0xDC), // CFD8DC
-      );
-    }
-
-    // Draw the chart legend
-    for (var i = 0; i < chartSeries.length; i++) {
-      final series = chartSeries[i];
-      img.drawString(
-        image,
-        series.label,
-        font: scale == 1 ? img.arial24 : img.arial48,
-        x: marginLeft + i * plotWidth ~/ chartSeries.length,
-        y: height4 - marginBottom + 12 * scale,
-        color: series.color,
       );
     }
 
@@ -372,6 +359,36 @@ final class Reports {
         img.fillCircle(image, x: dx2, y: dy2, radius: radius, color: color, antialias: true);
         dx1 = dx2;
         dy1 = dy2;
+      }
+    }
+
+    // Draw the chart legend
+    if (chartSeries.isNotEmpty) {
+      const rectPadding = 8;
+
+      img.fillRect(
+        image,
+        x1: marginLeft + plotWidth - 48 * scale - rectPadding * scale * 2,
+        y1: marginTop,
+        x2: marginLeft + plotWidth,
+        y2: marginTop + chartSeries.length * 12 * scale + rectPadding * scale * 2,
+        color: const img.ConstColorRgba8(0x21, 0x21, 0x21, 0x7F), // 212121
+        radius: rectPadding * scale,
+        alphaBlend: false,
+        maskChannel: img.Channel.luminance,
+      );
+
+      for (var i = 0; i < chartSeries.length; i++) {
+        final series = chartSeries[i];
+        img.drawString(
+          image,
+          series.label,
+          font: img.arial24,
+          x: marginLeft + plotWidth - rectPadding * scale,
+          y: marginTop + i * 12 * scale + rectPadding * scale,
+          color: series.color,
+          rightJustify: true,
+        );
       }
     }
 
