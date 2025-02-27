@@ -213,7 +213,7 @@ final class Reports {
     int paddingTop = 24,
     int paddingBottom = 48,
   }) async {
-    assert(data == null || (from == null && to == null), 'Either data or from and to must be null');
+    assert(data == null || (from == null && to == null && chatId == null), 'Either data or from and to must be null');
     data ??= await chartData(
       from: from ?? DateTime.now().subtract(const Duration(days: 1)),
       to: to ?? DateTime.now(),

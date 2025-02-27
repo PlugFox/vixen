@@ -417,10 +417,9 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             }
 
             // Generate the chart
-            final data = await reports.chartData(from: from, to: to /* chatId: cid, */, random: false);
+            final data = await reports.chartData(from: from, to: to, chatId: cid, random: false);
             final chart = await reports.chartPng(
               data: data,
-              chatId: cid,
               width: 720, // 480, // 1280
               height: 360, // 240, // 720
             );
