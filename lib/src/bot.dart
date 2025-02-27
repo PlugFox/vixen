@@ -235,6 +235,9 @@ class Bot {
     final result = _jsonDecoder.convert(response.bodyBytes);
     if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
       return messageId;
+    } else if (result case <String, Object?>{'ok': false, 'description': String description}) {
+      l.w('Failed to send message: $description', StackTrace.current, result);
+      throw Exception('Failed to send message: $description');
     } else {
       l.w('Failed to send message', StackTrace.current, result);
       throw Exception('Failed to send message');
@@ -269,9 +272,12 @@ class Bot {
     final result = _jsonDecoder.convert(responseBody);
     if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
       return messageId;
+    } else if (result case <String, Object?>{'ok': false, 'description': String description}) {
+      l.w('Failed to send photo: $description', StackTrace.current, result);
+      throw Exception('Failed to send photo: $description');
     } else {
-      l.w('Failed to send message', StackTrace.current, result);
-      throw Exception('Failed to send message: $result');
+      l.w('Failed to send photo', StackTrace.current, result);
+      throw Exception('Failed to send photo');
     }
   }
 

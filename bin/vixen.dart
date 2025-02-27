@@ -80,9 +80,15 @@ void main(List<String> args) {
       overrideOutput: (event) {
         //logsBuffer.add(event);
         if (event.level.level > arguments.verbose.level) return null;
+        var message = switch (event.message) {
+          String text => text,
+          Object obj => obj.toString(),
+        };
+        if (kReleaseMode)
+          message = message.replaceAll(arguments.secret, '******').replaceAll(arguments.token, '******');
         return '[${event.level.prefix}] '
             '${DateFormat('dd.MM.yyyy HH:mm:ss').format(event.timestamp)} '
-            '| ${event.message}';
+            '| $message';
       },
     ),
   );
@@ -278,119 +284,123 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
 
         final buffer = StringBuffer();
         for (final cid in chats) {
-          // Get data from the database
-          final mostActiveUsers = await reports
-              .mostActiveUsers(from, to, cid)
-              .then<ReportMostActiveUsers>((r) => r[cid] ?? const []);
-          final verifiedUsers = await reports.verifiedUsers(from, to, cid);
-          final bannedUsers = await reports.bannedUsers(from, to, cid);
-          final sentMessagesCount = await db
-              .customSelect(
-                'SELECT COUNT(1) AS count '
-                'FROM allowed_message '
-                'WHERE date BETWEEN :from AND :to AND chat_id = :cid;',
-                variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(cid)],
-              )
-              .getSingle()
-              .then((r) => r.read<int>('count'));
-          final deletedMessagesCount = await reports
-              .deletedCount(from, to, cid)
-              .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
+          try {
+            // Get data from the database
+            final mostActiveUsers = await reports
+                .mostActiveUsers(from, to, cid)
+                .then<ReportMostActiveUsers>((r) => r[cid] ?? const []);
+            final verifiedUsers = await reports.verifiedUsers(from, to, cid);
+            final bannedUsers = await reports.bannedUsers(from, to, cid);
+            final sentMessagesCount = await db
+                .customSelect(
+                  'SELECT COUNT(1) AS count '
+                  'FROM allowed_message '
+                  'WHERE date BETWEEN :from AND :to AND chat_id = :cid;',
+                  variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(cid)],
+                )
+                .getSingle()
+                .then((r) => r.read<int>('count'));
+            final deletedMessagesCount = await reports
+                .deletedCount(from, to, cid)
+                .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
 
-          // Create new report
-          buffer
-            ..writeln('*📅 Report for ${Bot.escapeMarkdownV2(DateFormat('dd MMMM yyyy', 'en_US').format(from))}*')
-            ..writeln();
-
-          if (sentMessagesCount > 0) {
+            // Create new report
             buffer
-              ..writeln('*📊 Messages count:* $sentMessagesCount')
+              ..writeln('*📅 Report for ${Bot.escapeMarkdownV2(DateFormat('dd MMMM yyyy', 'en_US').format(from))}*')
               ..writeln();
-          }
 
-          if (deletedMessagesCount > 0) {
-            buffer
-              ..writeln('*🗑️ Deleted messages:* $deletedMessagesCount')
-              ..writeln();
-          }
-
-          if (mostActiveUsers.isNotEmpty) {
-            if (mostActiveUsers.length == 1) {
-              final u = mostActiveUsers.single;
+            if (sentMessagesCount > 0) {
               buffer
-                ..write('*🥇 Most active user:* ')
-                ..writeln('${Bot.userMention(u.uid, u.username)} \\(${u.count} msg\\)');
-            } else {
-              buffer.writeln('*🥇 Most active users:*');
-              mostActiveUsers.sort((a, b) => b.count.compareTo(a.count));
-              for (final e in mostActiveUsers.take(5))
-                buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
+                ..writeln('*📊 Messages count:* $sentMessagesCount')
+                ..writeln();
             }
-            buffer.writeln();
-          }
 
-          if (verifiedUsers.isNotEmpty) {
-            if (verifiedUsers.length == 1) {
-              final u = verifiedUsers.single;
+            if (deletedMessagesCount > 0) {
               buffer
-                ..write('*✅ Verified user:* ')
-                ..writeln(Bot.userMention(u.uid, u.username));
-            } else {
-              buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
-              for (final e in verifiedUsers.take(5)) buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
-              if (verifiedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - 5} more_');
+                ..writeln('*🗑️ Deleted messages:* $deletedMessagesCount')
+                ..writeln();
             }
-            buffer.writeln();
-          }
 
-          if (bannedUsers.isNotEmpty) {
-            if (bannedUsers.length == 1) {
-              final u = bannedUsers.single;
-              buffer
-                ..write('*🚫 Banned user:* ')
-                ..writeln(Bot.escapeMarkdownV2(u.username));
-            } else {
-              buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
-              /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
-              for (final e in bannedUsers.take(5)) buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
-              if (bannedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - 5} more_');
+            if (mostActiveUsers.isNotEmpty) {
+              if (mostActiveUsers.length == 1) {
+                final u = mostActiveUsers.single;
+                buffer
+                  ..write('*🥇 Most active user:* ')
+                  ..writeln('${Bot.userMention(u.uid, u.username)} \\(${u.count} msg\\)');
+              } else {
+                buffer.writeln('*🥇 Most active users:*');
+                mostActiveUsers.sort((a, b) => b.count.compareTo(a.count));
+                for (final e in mostActiveUsers.take(5))
+                  buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
+              }
+              buffer.writeln();
             }
-            buffer.writeln();
+
+            if (verifiedUsers.isNotEmpty) {
+              if (verifiedUsers.length == 1) {
+                final u = verifiedUsers.single;
+                buffer
+                  ..write('*✅ Verified user:* ')
+                  ..writeln(Bot.userMention(u.uid, u.username));
+              } else {
+                buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
+                for (final e in verifiedUsers.take(5)) buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
+                if (verifiedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - 5} more_');
+              }
+              buffer.writeln();
+            }
+
+            if (bannedUsers.isNotEmpty) {
+              if (bannedUsers.length == 1) {
+                final u = bannedUsers.single;
+                buffer
+                  ..write('*🚫 Banned user:* ')
+                  ..writeln(Bot.escapeMarkdownV2(u.username));
+              } else {
+                buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
+                /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
+                for (final e in bannedUsers.take(5)) buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
+                if (bannedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - 5} more_');
+              }
+              buffer.writeln();
+            }
+
+            // Generate the chart
+            final data = await reports.chartData(from: from, to: to /* chatId: cid, */, random: false);
+            final chart = await reports.chartPng(
+              data: data,
+              chatId: cid,
+              width: 720, // 480, // 1280
+              height: 360, // 240, // 720
+            );
+
+            // Send new report
+            final messageId = await bot.sendPhoto(
+              chatId: cid,
+              bytes: chart,
+              filename: 'chart-${DateFormat('yyyy-mm-dd').format(to)}.png',
+              caption: buffer.toString(),
+              notification: false,
+            );
+
+            db
+                .into(db.reportMessage)
+                .insert(
+                  ReportMessageCompanion.insert(
+                    messageId: Value(messageId),
+                    chatId: cid,
+                    type: 'report',
+                    createdAt: toUnix,
+                    updatedAt: toUnix,
+                  ),
+                )
+                .ignore();
+          } on Object catch (e, s) {
+            l.w('Failed to send report for chat $cid: $e', s);
+          } finally {
+            // Clear the buffer
+            buffer.clear();
           }
-
-          // Generate the chart
-          final data = await reports.chartData(from: from, to: to /* chatId: cid, */, random: false);
-          final chart = await reports.chartPng(
-            data: data,
-            chatId: cid,
-            width: 720, // 480, // 1280
-            height: 360, // 240, // 720
-          );
-
-          // Send new report
-          final messageId = await bot.sendPhoto(
-            chatId: cid,
-            bytes: chart,
-            filename: 'chart-${DateFormat('yyyy-mm-dd').format(to)}.png',
-            caption: buffer.toString(),
-            notification: false,
-          );
-
-          db
-              .into(db.reportMessage)
-              .insert(
-                ReportMessageCompanion.insert(
-                  messageId: Value(messageId),
-                  chatId: cid,
-                  type: 'report',
-                  createdAt: toUnix,
-                  updatedAt: toUnix,
-                ),
-              )
-              .ignore();
-
-          // Clear the buffer
-          buffer.clear();
         }
       } on Object catch (e, s) {
         l.w('Failed to send reports: $e', s);
