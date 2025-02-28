@@ -122,3 +122,9 @@ const int spamDuplicateLimit = 4;
 
 /// The hour (server time) at which the daily report should be sent.
 const int reportAtHour = 17;
+
+/// The number of verified users to show in the report.
+const int reportVerifiedLimit = 10;
+
+/// The number of banned users to show in the report.
+const int reportBannedLimit = 10;

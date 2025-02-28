@@ -356,8 +356,18 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
                 .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
 
             // Create new report
+            final dateFormat = DateFormat('dd MMMM yyyy', 'en_US');
+            const nbsp = '\u00A0';
             buffer
-              ..writeln('*📅 Report for ${Bot.escapeMarkdownV2(DateFormat('dd MMMM yyyy', 'en_US').format(from))}*')
+              ..write('*📅 Report for chat')
+              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid'))
+              ..writeln('*')
+              ..write(nbsp * 2)
+              ..write('_')
+              ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
+              ..write(r' \- ')
+              ..write(Bot.escapeMarkdownV2(dateFormat.format(to)))
+              ..writeln('_')
               ..writeln();
 
             if (sentMessagesCount > 0) {
@@ -395,8 +405,10 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
                   ..writeln(Bot.userMention(u.uid, u.username));
               } else {
                 buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
-                for (final e in verifiedUsers.take(5)) buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
-                if (verifiedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - 5} more_');
+                for (final e in verifiedUsers.take(reportVerifiedLimit))
+                  buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
+                if (verifiedUsers.length > reportVerifiedLimit)
+                  buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - reportVerifiedLimit} more_');
               }
               buffer.writeln();
             }
@@ -410,8 +422,10 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               } else {
                 buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
                 /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
-                for (final e in bannedUsers.take(5)) buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
-                if (bannedUsers.length > 5) buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - 5} more_');
+                for (final e in bannedUsers.take(reportBannedLimit))
+                  buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
+                if (bannedUsers.length > reportBannedLimit)
+                  buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - reportBannedLimit} more_');
               }
               buffer.writeln();
             }
