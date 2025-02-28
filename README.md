@@ -25,6 +25,8 @@ It automatically deletes initial messages from unverified users and supports mul
 
 ![](.img/captcha_1.webp)
 
+![](.img/report_1.webp)
+
 ## 🚀 Getting Started
 
 The bot supports configuration via command-line arguments, environment variables, or a `.env` file.
