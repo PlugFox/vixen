@@ -354,6 +354,16 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             final deletedMessagesCount = await reports
                 .deletedCount(from, to, cid)
                 .then((r) => r.firstWhereOrNull((e) => e.cid == cid)?.count ?? 0);
+            final captchaCount = await db
+                .customSelect(
+                  'SELECT COUNT(1) AS count '
+                  'FROM captcha_message AS tbl '
+                  'WHERE tbl.updated_at BETWEEN :from AND :to '
+                  'AND tbl.chat_id = :cid',
+                  variables: [Variable.withInt(fromUnix), Variable.withInt(toUnix), Variable.withInt(cid)],
+                )
+                .getSingle()
+                .then((r) => r.read<int>('count'));
 
             // Create new report
             final dateFormat = DateFormat('dd MMMM yyyy', 'en_US');
@@ -379,6 +389,12 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             if (deletedMessagesCount > 0) {
               buffer
                 ..writeln('*🗑️ Deleted messages:* $deletedMessagesCount')
+                ..writeln();
+            }
+
+            if (captchaCount > 0) {
+              buffer
+                ..writeln('*🔒 Captcha messages:* $captchaCount')
                 ..writeln();
             }
 
