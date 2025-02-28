@@ -362,10 +362,10 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               ..write('*📅 Report for chat')
               ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid'))
               ..writeln('*')
-              ..write(nbsp * 2)
+              ..write(nbsp * 3)
               ..write('_')
-              ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
-              ..write(r' \- ')
+              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
+              ..write(r' \- ') */
               ..write(Bot.escapeMarkdownV2(dateFormat.format(to)))
               ..writeln('_')
               ..writeln();
