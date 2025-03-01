@@ -369,13 +369,13 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             final dateFormat = DateFormat('dd MMMM yyyy', 'en_US');
             const nbsp = '\u00A0';
             buffer
-              ..write('*📅 Report for chat')
-              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid'))
+              ..write('*📅 Report for chat ')
+              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid').replaceAll(' ', nbsp))
               ..writeln('*')
-              ..write(nbsp * 3)
+              ..write(nbsp * 8)
               ..write('_')
-              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
-              ..write(r' \- ') */
+              ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
+              ..write(r' \- ')
               ..write(Bot.escapeMarkdownV2(dateFormat.format(to)))
               ..writeln('_')
               ..writeln();
