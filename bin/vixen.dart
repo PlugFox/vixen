@@ -366,7 +366,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
                 .then((r) => r.read<int>('count'));
 
             // Create new report
-            final dateFormat = DateFormat('dd MMMM yyyy', 'en_US');
+            final dateFormat = DateFormat('d MMMM yyyy', 'en_US');
             const nbsp = '\u00A0';
             buffer
               ..write('*📅 Report for chat ')
@@ -458,7 +458,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
             final messageId = await bot.sendPhoto(
               chatId: cid,
               bytes: chart,
-              filename: 'chart-${DateFormat('yyyy-mm-dd').format(to)}.png',
+              filename: 'chart-${DateFormat('yyyy-MM-dd').format(to)}.png',
               caption: buffer.toString(),
               notification: false,
             );
@@ -498,7 +498,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
       }
     }
 
-    Timer(duration, sendReports);
+    Timer(Duration.zero /* duration */, sendReports);
   }
 
   planReport();
