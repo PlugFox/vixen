@@ -498,7 +498,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
       }
     }
 
-    Timer(Duration.zero /* duration */, sendReports);
+    Timer(duration, sendReports);
   }
 
   planReport();
