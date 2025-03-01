@@ -31,6 +31,16 @@ It automatically deletes initial messages from unverified users and supports mul
 
 The bot supports configuration via command-line arguments, environment variables, or a `.env` file.
 
+### 💻 Minimum System Requirements
+
+To run the Telegram Vixen Bot, ensure your system meets the following minimum requirements:
+
+- **Operating System**: Windows, macOS, or a recent Linux distribution
+- **Processor**: x86_64 or ARM64
+- **Memory**: 128 MB RAM
+- **Storage**: 100 MB available space
+- **Docker**: (Optional) For running the bot in a containerized environment
+
 ### 🔧 Install Dependencies
 
 Ensure you have [Dart SDK](https://dart.dev/get-dart) installed. Then, run:
