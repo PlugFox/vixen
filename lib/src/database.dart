@@ -141,7 +141,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -208,6 +208,10 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
       case 6:
         // Migration from 6 to 7
         await m.createTable(db.chatInfo);
+      case 7:
+        // Migration from 7 to 8
+        await m.addColumn(db.allowedMessage, db.allowedMessage.length);
+        await m.addColumn(db.allowedMessage, db.allowedMessage.message);
       default:
         if (kDebugMode) throw UnimplementedError('Unsupported migration from $from to $to');
     }

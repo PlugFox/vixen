@@ -107,7 +107,13 @@ CREATE TABLE IF NOT EXISTS allowed_message (
     username TEXT NOT NULL,
 
     -- Type of activity / message
-    type TEXT NOT NULL
+    type TEXT NOT NULL,
+
+    -- Length of the message
+    length INTEGER NOT NULL DEFAULT 0,
+
+    -- Text of the message
+    message TEXT NOT NULL DEFAULT ''
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS allowed_message_chat_id_idx ON allowed_message (chat_id);
