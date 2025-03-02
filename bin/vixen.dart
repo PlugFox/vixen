@@ -46,6 +46,12 @@ void main(List<String> args) {
         final db = Database.lazy(path: arguments.database); // Open the database
         await db.customStatement('VACUUM;'); // Compact the database
         collectLogs(db, logsBuffer); // Store logs in the database every 5 seconds
+
+        Timer.periodic(const Duration(days: 5), (_) async {
+          await db.customStatement('VACUUM;'); // Compact the database every five days
+          l.i('Database "${arguments.database}" is compacted');
+        });
+
         await db.refresh();
         l.i('Database "${arguments.database}" is ready');
 
@@ -194,6 +200,20 @@ void Function(int updateId, Map<String, Object?> update) handler({
     if (deleted.isEmpty) return;
     for (final ban in deleted) bot.unbanUser(ban.chatId, ban.userId, onlyIfBanned: true).ignore();
     l.i('Unbanned ${deleted.length} expired bans');
+  });
+
+  // Periodically delete outdated deleted records.
+  Timer.periodic(const Duration(days: 1), (_) async {
+    final yearAgo = DateTime.now().subtract(const Duration(days: 365)).millisecondsSinceEpoch ~/ 1000;
+    await db.batch((batch) {
+      batch
+        ..deleteWhere(
+          db.deletedMessageHash,
+          (tbl) => tbl.updateAt.isSmallerThanValue(yearAgo) & tbl.count.isSmallerThanValue(spamDuplicateLimit),
+        )
+        ..deleteWhere(db.deletedMessage, (tbl) => tbl.date.isSmallerThanValue(yearAgo));
+    });
+    l.i('Cleaned old deleted messages');
   });
 
   // Clear the old logs
