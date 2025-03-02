@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_foreach
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:math' as math;
 
@@ -10,6 +11,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:vixen/src/constant/constants.dart';
 import 'package:vixen/src/queries.dart';
+import 'package:xxh3/xxh3.dart' as xxh3;
 
 export 'package:drift/drift.dart' hide DatabaseOpener;
 export 'package:drift/isolate.dart';
@@ -66,7 +68,7 @@ class Database extends _$Database
   /// If [logStatements] is true (defaults to `false`), generated sql statements
   /// will be printed before executing. This can be useful for debugging.
   /// The optional [setup] function can be used to perform a setup just after
-  /// the database is opened, before moor is fully ready. This can be used to
+  /// the database is opened, before drift is fully ready. This can be used to
   /// add custom user-defined sql functions or to provide encryption keys in
   /// SQLCipher implementations.
   Database.lazy({String? path, bool logStatements = false, bool dropDatabase = false})
@@ -82,7 +84,7 @@ class Database extends _$Database
   /// If [logStatements] is true (defaults to `false`), generated sql statements
   /// will be printed before executing. This can be useful for debugging.
   /// The optional [setup] function can be used to perform a setup just after
-  /// the database is opened, before moor is fully ready. This can be used to
+  /// the database is opened, before drift is fully ready. This can be used to
   /// add custom user-defined sql functions or to provide encryption keys in
   /// SQLCipher implementations.
   Database.memory({bool logStatements = false})
@@ -141,7 +143,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -168,7 +170,11 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
   /// happened at a different [GeneratedDatabase.schemaVersion].
   /// Schema version upgrades and downgrades will both be run here.
   @override
-  OnUpgrade get onUpgrade => (m, from, to) async => _update(_db, m, from, to);
+  OnUpgrade get onUpgrade => (m, from, to) async {
+    if (from == to) return;
+    await _db.customStatement('PRAGMA foreign_keys = OFF;');
+    return _update(_db, m, from, to);
+  };
 
   /// Executes after the database is ready to be used (ie. it has been opened
   /// and all migrations ran), but before any other queries will be sent. This
@@ -177,9 +183,10 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
   @override
   OnBeforeOpen get beforeOpen => (details) async {
     // await details.executor.runCustom('PRAGMA foreign_keys = ON;');
+    await _db.customStatement('PRAGMA foreign_keys = ON;');
   };
 
-  /// https://moor.simonbinder.eu/docs/advanced-features/migrations/
+  /// https://drift.simonbinder.eu/migrations/
   static Future<void> _update(Database db, Migrator m, int from, int to) async {
     if (from >= to) return; // Don't run if the schema is already up to date
     switch (from) {
@@ -208,6 +215,51 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
       case 6:
         // Migration from 6 to 7
         await m.createTable(db.chatInfo);
+      case 7:
+        // Migration from 7 to 8
+        await m.addColumn(db.allowedMessage, db.allowedMessage.replyTo);
+        await m.addColumn(db.allowedMessage, db.allowedMessage.length);
+        await m.addColumn(db.allowedMessage, db.allowedMessage.content);
+        // Normalize the table 'deleted_message_hash'
+        {
+          final messages = await db.select(db.deletedMessageHash).get();
+          final toInsert = List<DeletedMessageHashCompanion>.generate(messages.length, (i) {
+            final msg = messages[i];
+            final content =
+                msg.message
+                    .toLowerCase()
+                    // Replace multiple spaces with a single space
+                    .replaceAll(RegExp(r'\s+'), ' ')
+                    // Remove all characters except letters, numbers and spaces
+                    .replaceAll(
+                      RegExp(
+                        // Exclude all characters except letters, numbers and spaces
+                        r'[^0-9a-zа-яё\s'
+                        r'\.\,\+\-\*\/\=\!\?\;\:\(\)\"\@\#\%\$\₽\€\¥\₩\₴]',
+                      ),
+                      '',
+                    )
+                    // Trim the text
+                    .trim();
+            return DeletedMessageHashCompanion.insert(
+              hash: xxh3.xxh3(utf8.encode(content)),
+              length: content.length,
+              message: content,
+              updateAt: msg.updateAt,
+              count: msg.count,
+            );
+          }, growable: false);
+          await db.delete(db.deletedMessageHash).go();
+          for (var i = 0; i < toInsert.length; i += 500) {
+            await db.batch(
+              (batch) => batch.insertAll(
+                db.deletedMessageHash,
+                toInsert.sublist(i, math.min(i + 500, toInsert.length)),
+                mode: InsertMode.insertOrReplace,
+              ),
+            );
+          }
+        }
       default:
         if (kDebugMode) throw UnimplementedError('Unsupported migration from $from to $to');
     }
