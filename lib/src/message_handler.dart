@@ -125,6 +125,20 @@ class MessageHandler {
       final name = Bot.formatUsername(from);
 
       Future<void>(() async {
+        /// Get the content of the message.
+        final content =
+            switch (type) {
+              'text' => message['text']?.toString(),
+              'photo' => message['caption']?.toString(),
+              'audio' => message['caption']?.toString(),
+              'video' => message['caption']?.toString(),
+              'document' => message['caption']?.toString(),
+              'animation' => message['caption']?.toString(),
+              'voice' => message['caption']?.toString(),
+              'paid_media' => message['caption']?.toString(),
+              _ => null,
+            }?.trim();
+
         if (await _db.isVerified(userId)) {
           // User is verified - update user activity and proceed
           _db
@@ -137,6 +151,12 @@ class MessageHandler {
                   date: date,
                   username: name.name ?? name.username ?? 'Unknown',
                   type: type,
+                  replyTo: Value<int?>.absentIfNull(switch (message) {
+                    <String, Object?>{'reply_to_message': <String, Object?>{'message_id': int v}} => v,
+                    _ => null,
+                  }),
+                  length: Value<int>(content?.length ?? 0),
+                  content: Value<String>(content ?? ''),
                 ),
                 mode: InsertMode.insertOrReplace,
               )
@@ -189,17 +209,21 @@ class MessageHandler {
         // Check if the message have a lot of duplicates as a spam
         {
           final text =
-              switch (type) {
-                'text' => message['text']?.toString(),
-                'photo' => message['caption']?.toString(),
-                'audio' => message['caption']?.toString(),
-                'video' => message['caption']?.toString(),
-                'document' => message['caption']?.toString(),
-                'animation' => message['caption']?.toString(),
-                'voice' => message['caption']?.toString(),
-                'paid_media' => message['caption']?.toString(),
-                _ => null,
-              }?.trim().toLowerCase();
+              content
+                  ?.toLowerCase()
+                  // Replace multiple spaces with a single space
+                  .replaceAll(RegExp(r'\s+'), ' ')
+                  // Remove all characters except letters, numbers and spaces
+                  .replaceAll(
+                    RegExp(
+                      // Exclude all characters except letters, numbers and spaces
+                      r'[^0-9a-zа-яё\s'
+                      r'\.\,\+\-\*\/\=\!\?\;\:\(\)\"\@\#\%\$\₽\€\¥\₩\₴]',
+                    ),
+                    '',
+                  )
+                  // Trim the text
+                  .trim();
           final length = text?.length ?? 0;
           // Check if the message is a spam by checking the hash of the message
           if (text != null && length >= 48) {
