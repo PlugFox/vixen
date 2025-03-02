@@ -8,7 +8,7 @@ import 'package:vixen/src/database.dart';
 
 typedef ReportMostActiveUsers = List<({int uid, String username, DateTime seen, int count})>;
 
-typedef ReportSpamMessages = List<({String message, int count, DateTime date})>;
+typedef ReportSpamMessages = List<({String hash, String message, int count, DateTime date})>;
 
 typedef ReportVerifiedUsers = List<({int cid, int uid, String username, DateTime verifiedAt})>;
 
@@ -64,6 +64,7 @@ final class Reports {
     return result
         .map(
           (e) => (
+            hash: e.read<int>('hash').toString(),
             message: e.read<String>('message'),
             count: e.read<int>('count'),
             date: DateTime.fromMillisecondsSinceEpoch(e.read<int>('date') * 1000).toUtc(),
@@ -442,6 +443,7 @@ ORDER BY
 
 const String _spamMessagesQuery = '''
 SELECT
+  del.hash      AS hash,
   del.message   AS message,
   del.count     AS count,
   del.update_at AS date

@@ -253,7 +253,12 @@ Future<Map<String, Object?>> _getReport({required Database db, required DateTime
         .toList(growable: false),
     'spam': spamMessages
         .map<Map<String, Object?>>(
-          (e) => <String, Object?>{'message': e.message, 'count': e.count, 'date': e.date.toIso8601String()},
+          (e) => <String, Object?>{
+            'hash': e.hash,
+            'message': e.message,
+            'count': e.count,
+            'date': e.date.toIso8601String(),
+          },
         )
         .toList(growable: false),
     'deleted': deletedCount
