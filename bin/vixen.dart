@@ -394,9 +394,10 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               ..writeln('*')
               ..write(nbsp * 8)
               ..write('_')
-              ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
+              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
               ..write(r' \- ')
-              ..write(Bot.escapeMarkdownV2(dateFormat.format(to)))
+               */
+              ..write(Bot.escapeMarkdownV2(dateFormat.format(to).replaceAll(' ', nbsp)))
               ..writeln('_')
               ..writeln();
 
