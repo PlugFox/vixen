@@ -81,7 +81,7 @@ Future<Response> $GET$Admin$Logs(Request request) async {
       'id': log.id,
       'level': log.level,
       'message': log.message,
-      'time': log.time,
+      'time': DateTime.fromMillisecondsSinceEpoch(log.time * 1000).toIso8601String(),
       if (log.stack != null) 'stack': log.stack,
       if (log.context != null) 'context': log.context,
     });
@@ -104,7 +104,14 @@ Future<Response> $GET$Admin$Logs(Request request) async {
     return Responses.ok(<String, Object?>{
       'count': logs.length,
       'items': logs
-          .map((e) => <String, Object?>{'id': e.id, 'level': e.level, 'message': e.message, 'time': e.time})
+          .map(
+            (e) => <String, Object?>{
+              'id': e.id,
+              'level': e.level,
+              'message': e.message,
+              'time': DateTime.fromMillisecondsSinceEpoch(e.time * 1000).toIso8601String(),
+            },
+          )
           .toList(growable: false),
     });
   }
