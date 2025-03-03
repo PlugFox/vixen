@@ -140,9 +140,11 @@ abstract final class TelegramMessageComposer {
       final topicBuffer =
           StringBuffer()
             ..write('*')
-            ..write('📌 ')
+            ..write('📌 [')
             ..write(Bot.escapeMarkdownV2(topic.title))
-            ..writeln('*')
+            ..write('](https://t.me/c/${Bot.shortId(chatId)}/${topic.message})')
+            ..writeln('*');
+      /*
             ..write(nbsp * 6)
             ..write('_')
             ..write('[')
@@ -150,7 +152,7 @@ abstract final class TelegramMessageComposer {
             ..write(' ${topic.count > 1 ? 'messages' : 'message'}]')
             ..write('(https://t.me/c/${Bot.shortId(chatId)}/${topic.message})')
             ..writeln('_')
-            ..writeln();
+            ..writeln(); */
 
       // Summary
       if (topic.summary.isNotEmpty) {
