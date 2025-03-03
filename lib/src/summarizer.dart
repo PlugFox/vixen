@@ -84,9 +84,10 @@ class Summarizer {
     throw Exception('Failed to parse chat summary: ${response.body}');
   }
 
-  List<SummaryTopic> _extractTopics(List<Map<String, Object?>> data) => data
+  List<SummaryTopic> _extractTopics(List<Map<String, Object?>> data, Map<int, AllowedMessageData> messages) => data
     .map<SummaryTopic?>((e) {
       if (e case <String, Object?>{'title': String title, 'summary': String summary, 'start_message_id': int message}) {
+        if (!messages.containsKey(message)) return null; // Skip if message not found
         final points = switch (e) {
           <String, Object?>{'key_points': List<Object?> points} when points.isNotEmpty => points
               .whereType<String>()
@@ -102,18 +103,16 @@ class Summarizer {
         final quotes = switch (e) {
           <String, Object?>{'notable_quotes': List<Object?> quotes} when quotes.isNotEmpty => quotes
               .whereType<Map<String, Object?>>()
-              .map<SummaryQuote?>(
-                (e) => switch (e) {
-                  <String, Object?>{
-                    'quote': String quote,
-                    'user_id': int uid,
-                    'username': String username,
-                    'message_id': int message,
-                  } =>
-                    (quote: quote, uid: uid, username: username, message: message),
-                  _ => null,
-                },
-              )
+              .map<SummaryQuote?>((e) {
+                if (e case <String, Object?>{'quote': String quote, 'message_id': int message}) {
+                  // Extract quote and user info
+                  final msg = messages[message];
+                  if (msg == null) return null;
+                  return (message: message, quote: quote, uid: msg.userId, username: msg.username);
+                } else {
+                  return null;
+                }
+              })
               .whereType<SummaryQuote>()
               .where((e) => e.quote.isNotEmpty && e.username.isNotEmpty && e.message > 0 && e.uid > 0)
               .toList(growable: false),
@@ -152,6 +151,8 @@ class Summarizer {
               ..orderBy([(u) => OrderingTerm(expression: u.date, mode: OrderingMode.asc)]))
             .get();
 
+    final msgMap = <int, AllowedMessageData>{for (final msg in messages) msg.messageId: msg};
+
     final summaryMessages = messages
         .where((e) => e.length > 12 && e.content.length > 12)
         .map(
@@ -170,7 +171,7 @@ class Summarizer {
     if (summaryMessages.isEmpty) return const <SummaryTopic>[];
     if (summaryMessages.length < 10) return const <SummaryTopic>[];
     final data = await _fetchSummary(summaryMessages);
-    return _extractTopics(data);
+    return _extractTopics(data, msgMap);
   }
 }
 
