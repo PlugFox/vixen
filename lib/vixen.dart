@@ -1,5 +1,8 @@
 library;
 
+export 'package:vixen/src/reports.dart';
+export 'package:vixen/src/summarizer.dart';
+
 export 'src/anti_spam.dart';
 export 'src/arguments.dart';
 export 'src/bot.dart';

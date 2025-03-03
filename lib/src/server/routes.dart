@@ -4,10 +4,11 @@ import 'dart:io' as io;
 import 'package:collection/collection.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:vixen/src/reports.dart';
+import 'package:vixen/src/constant/pubspec.yaml.g.dart' show Pubspec;
+import 'package:vixen/src/database.dart';
+import 'package:vixen/src/reports.dart' show Reports;
 import 'package:vixen/src/server/middlewares.dart';
 import 'package:vixen/src/server/responses.dart';
-import 'package:vixen/vixen.dart';
 
 final Router $router =
     Router(notFoundHandler: $ALL$NotFound)
@@ -31,6 +32,7 @@ final Router $router =
       ..get('/admin/report', $GET$Admin$Report)
       ..get('/admin/chart', $GET$Admin$Chart)
       ..get('/admin/chart.png', $GET$Admin$ChartPng)
+      ..get('/admin/summary/<cid>', $GET$Admin$Summary)
       // --- Not found --- //
       //..get('/stat', $stat)
       ..all('/<ignored|.*>', $ALL$NotFound);
@@ -49,20 +51,42 @@ Future<Response> $ALL$NotFound(Request request) => Responses.error(
   ),
 );
 
-Future<Response> $GET$About(Request request) => Responses.ok(<String, Object?>{
-  'name': Pubspec.name,
-  'description': Pubspec.description,
-  'repository': Pubspec.repository,
-  'semversion': Pubspec.version.representation,
-  'timestamp': Pubspec.timestamp.toIso8601String(),
-  'datetime': DateTime.now().toIso8601String(),
-  'timezone': DateTime.now().timeZoneName,
-  'locale': io.Platform.localeName,
-  'platform': io.Platform.operatingSystem,
-  'dart': io.Platform.version,
-  'cpu': io.Platform.numberOfProcessors,
-  'chats': Dependencies.of(request).arguments.chats.toList(growable: false),
-});
+Future<Response> $GET$About(Request request) async {
+  final deps = Dependencies.of(request);
+  final db = deps.database;
+  final cids = deps.arguments.chats;
+  final chats = await (db.select(db.chatInfo)
+        ..where((tbl) => tbl.chatId.isIn(cids))
+        ..orderBy([(u) => OrderingTerm(expression: u.chatId, mode: OrderingMode.asc)]))
+      .get()
+      .then((value) => <int, ChatInfoData>{for (final chat in value) chat.chatId: chat});
+
+  return Responses.ok(<String, Object?>{
+    'name': Pubspec.name,
+    'description': Pubspec.description,
+    'repository': Pubspec.repository,
+    'semversion': Pubspec.version.representation,
+    'timestamp': Pubspec.timestamp.toIso8601String(),
+    'datetime': DateTime.now().toIso8601String(),
+    'timezone': DateTime.now().timeZoneName,
+    'locale': io.Platform.localeName,
+    'platform': io.Platform.operatingSystem,
+    'dart': io.Platform.version,
+    'cpu': io.Platform.numberOfProcessors,
+    'chats': <Map<String, Object?>>[
+      for (final id in cids)
+        <String, Object?>{
+          'id': id,
+          if (chats[id] case ChatInfoData data) ...<String, Object?>{
+            'type': data.type,
+            if (data.title case String value when value.isNotEmpty) 'title': value,
+            if (data.description case String value when value.isNotEmpty) 'description': value,
+            'members': DateTime.fromMillisecondsSinceEpoch(data.updatedAt * 1000).toIso8601String(),
+          },
+        },
+    ],
+  });
+}
 
 Future<Response> $GET$Admin$Logs(Request request) async {
   final $id = request.params['id'];
@@ -396,4 +420,61 @@ Future<Response> $GET$Admin$ChartPng(Request request) async {
       io.HttpHeaders.acceptRangesHeader: 'bytes', // Allow partial requests
     },
   );
+}
+
+Future<Response> $GET$Admin$Summary(Request request) async {
+  final cidString = request.params['cid'];
+  if (cidString == null || cidString.isEmpty)
+    return Responses.error(const BadRequestException(detail: 'Missing Chat ID'));
+  final cid = int.tryParse(cidString);
+  if (cid == null) return Responses.error(const BadRequestException(detail: 'Invalid Chat ID'));
+  var from =
+          switch (request.url.queryParameters['from']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now().subtract(const Duration(days: 1)),
+      to =
+          switch (request.url.queryParameters['to']) {
+            String iso when iso.isNotEmpty => DateTime.tryParse(iso),
+            _ => null,
+          } ??
+          DateTime.now();
+  final summarizer = Dependencies.of(request).summarizer;
+  if (summarizer == null)
+    return Responses.error(const ServiceUnavailableException(detail: 'Summarizer is not available'));
+  try {
+    final topics = await summarizer(chatId: cid, from: from, to: to);
+    return Responses.ok(<String, Object?>{
+      'from': from.toIso8601String(),
+      'to': to.toIso8601String(),
+      'length': topics.length,
+      'topics':
+          topics.isEmpty
+              ? const <Object?>[]
+              : topics
+                  .map<Map<String, Object?>>(
+                    (e) => <String, Object?>{
+                      'title': e.title,
+                      'summary': e.summary,
+                      'message': e.message,
+                      'points': e.points.map((e) => e).toList(growable: false),
+                      'conclusions': e.conclusions.map((e) => e).toList(growable: false),
+                      'quotes': e.quotes
+                          .map(
+                            (e) => <String, Object?>{'quote': e.quote, 'username': e.username, 'message_id': e.message},
+                          )
+                          .toList(growable: false),
+                    },
+                  )
+                  .toList(growable: false),
+    });
+  } on Object catch (e, s) {
+    return Responses.error(
+      InternalServerError(
+        detail: 'An error occurred while summarizing the chat',
+        data: <String, Object?>{'error': e.toString(), 'stack': s.toString()},
+      ),
+    );
+  }
 }

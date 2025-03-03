@@ -77,6 +77,35 @@ ArgParser _buildParser() =>
         help: 'Verbose mode for output: all | debug | info | warn | error',
         defaultsTo: 'warn',
         valueHelp: 'info',
+      )
+      ..addOption(
+        'openai-key',
+        aliases: ['openai', 'chatgpt', 'api-key', 'apikey', 'summarization'],
+        mandatory: false,
+        help: 'OpenAI API key for summarization',
+        valueHelp: 'sk-1234567890abcdef',
+      )
+      ..addOption(
+        'openai-model',
+        aliases: ['model', 'gpt-model', 'gpt'],
+        mandatory: false,
+        help: 'OpenAI model for summarization',
+        valueHelp: 'gpt-4o-mini',
+      )
+      ..addOption(
+        'openai-url',
+        aliases: ['openai-endpoint', 'openai-endpoint'],
+        mandatory: false,
+        help: 'OpenAI API endpoint',
+        valueHelp: 'https://api.openai.com/v1/chat/completions',
+      )
+      ..addOption(
+        'report-hour',
+        aliases: ['report', 'report-at', 'report-time', 'report-hour', 'report-at-hour'],
+        mandatory: false,
+        help: 'The hour (server time) at which the daily report should be sent',
+        defaultsTo: '17',
+        valueHelp: '17',
       );
 
 /// Arguments for current project
@@ -87,7 +116,20 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     try {
       final results = parser.parse(arguments);
       const flags = <String>{'help'};
-      const options = <String>{'token', 'chats', 'secret', 'verbose', 'db', 'address', 'port', 'offset'};
+      const options = <String>{
+        'token',
+        'chats',
+        'secret',
+        'verbose',
+        'db',
+        'address',
+        'port',
+        'offset',
+        'openai-key',
+        'openai-model',
+        'openai-url',
+        'report-hour',
+      };
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
         // --- From .env file --- //
@@ -152,6 +194,10 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           String v when v.isNotEmpty => int.tryParse(v),
           _ => null,
         },
+        openaiKey: table['openai-key'],
+        openaiModel: table['openai-model'],
+        openaiUrl: table['openai-url'],
+        reportAtHour: int.tryParse(table['report-hour'] ?? '17') ?? 17,
       );
     } on FormatException {
       io.stderr
@@ -181,6 +227,10 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     required this.address,
     required this.port,
     required this.offset,
+    required this.openaiKey,
+    required this.openaiModel,
+    required this.openaiUrl,
+    required this.reportAtHour,
     required Map<String, String> arguments,
   }) : _arguments = arguments;
 
@@ -207,6 +257,18 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// Offset for Telegram updates
   final int? offset;
+
+  /// OpenAI API key for summarization
+  final String? openaiKey;
+
+  /// OpenAI model for summarization
+  final String? openaiModel;
+
+  /// OpenAI API endpoint
+  final String? openaiUrl;
+
+  /// The hour (server time) at which the daily report should be sent
+  final int reportAtHour;
 
   /// Arguments
   final Map<String, String> _arguments;

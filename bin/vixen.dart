@@ -8,7 +8,6 @@ import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 import 'package:l/l.dart';
-import 'package:vixen/src/reports.dart';
 import 'package:vixen/vixen.dart';
 
 /// The main entry point of the bot.
@@ -59,7 +58,18 @@ void main(List<String> args) {
         await captchaQueue.start();
         l.i('Captcha queue is running');
 
-        await startServer(arguments: arguments, database: db);
+        final summarizer = switch (arguments.openaiKey) {
+          String key when key.length >= 6 => Summarizer(
+            key: key,
+            db: db,
+            model: arguments.openaiModel,
+            url: arguments.openaiUrl,
+          ),
+          _ => null,
+        };
+        if (summarizer != null) l.i('Summarizer is initialized');
+
+        await startServer(arguments: arguments, database: db, summarizer: summarizer);
         l.i('Server is running on ${arguments.address}:${arguments.port}');
 
         final lastUpdateId = arguments.offset ?? db.getKey<int>(updateIdKey);
@@ -69,8 +79,13 @@ void main(List<String> args) {
           ..start();
         l.i('Bot is running');
 
-        sendReportsTimer(db, bot, arguments.chats);
+        sendReportsTimer(db, bot, arguments.chats, arguments.reportAtHour);
         l.i('Report sender is running');
+
+        if (summarizer != null) {
+          sendSummaryTimer(summarizer, db, bot, arguments.chats, arguments.reportAtHour);
+          l.i('Summary sender is running');
+        }
 
         updateChatInfos(db, bot, arguments.chats);
         l.i('Chat info updater is running');
@@ -323,7 +338,7 @@ void updateChatInfos(Database db, Bot bot, Set<int> chats) {
 }
 
 /// Periodically sends reports to the chats.
-void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
+void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
   if (chats.isEmpty) return;
   final reports = Reports(db: db);
 
@@ -468,6 +483,11 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               buffer.writeln();
             }
 
+            // Add the hashtag
+            buffer
+              ..writeln()
+              ..writeln(Bot.escapeMarkdownV2('#report #chart'));
+
             // Generate the chart
             final data = await reports.chartData(from: from, to: to, chatId: cid, random: false);
             final chart = await reports.chartPng(
@@ -524,4 +544,191 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
   }
 
   planReport();
+}
+
+/// Periodically sends summaries to the chats.
+void sendSummaryTimer(Summarizer summarizer, Database db, Bot bot, Set<int> chats, int reportAtHour) {
+  if (chats.isEmpty) return;
+
+  void planSummary() {
+    final now = DateTime.now().toUtc();
+    final nextReportTime = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+      reportAtHour,
+    ).add(now.hour >= reportAtHour ? const Duration(days: 1) : Duration.zero);
+
+    final duration = nextReportTime.difference(now);
+
+    Future<void> sendSummary() async {
+      try {
+        final to = DateTime.now().toUtc(), from = to.subtract(const Duration(days: 1));
+
+        // Delete the old report
+        {
+          final oldReports =
+              await (db.delete(db.reportMessage)..where((tbl) => tbl.type.equals('report'))).goAndReturn();
+          for (final report in oldReports) bot.deleteMessage(report.chatId, report.messageId).ignore();
+        }
+
+        final buffer = StringBuffer();
+        for (final cid in chats) {
+          ChatInfoData? chatInfo;
+          try {
+            chatInfo = await (db.select(db.chatInfo)..where((tbl) => tbl.chatId.equals(cid))).getSingleOrNull();
+            final topics = await summarizer(chatId: cid, from: from, to: to);
+            if (topics.isEmpty) continue;
+
+            final dateFormat = DateFormat('d MMMM yyyy', 'en_US');
+            const nbsp = '\u00A0';
+            buffer
+              ..write('*📌 Summary for chat'.replaceAll(' ', nbsp))
+              ..write(' ')
+              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid').replaceAll(' ', nbsp))
+              ..writeln('*')
+              ..write(nbsp * 8)
+              ..write('_')
+              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
+              ..write(r' \- ')
+               */
+              ..write(Bot.escapeMarkdownV2(dateFormat.format(to).replaceAll(' ', nbsp)))
+              ..writeln('_')
+              ..writeln();
+
+            for (final topic in topics) {
+              final topicBuffer =
+                  StringBuffer()
+                    ..write('*')
+                    ..write(Bot.escapeMarkdownV2(topic.title))
+                    ..write('*')
+                    ..write(' - [')
+                    ..write(Bot.escapeMarkdownV2(topic.count.toString()))
+                    ..write(' messages]')
+                    ..write('(https://t.me/c/${Bot.shortId(cid)}/${topic.message})')
+                    ..writeln();
+
+              // Summary
+              if (topic.summary.isNotEmpty) {
+                topicBuffer
+                  ..writeln(Bot.escapeMarkdownV2(topic.summary))
+                  ..writeln();
+              }
+
+              // Points
+              if (topic.points.isNotEmpty) {
+                topicBuffer.writeln('*📝 Points:*');
+                for (final point in topic.points) {
+                  final lines = point
+                      .trim()
+                      .split('\n')
+                      .map<String>((e) => e.trim())
+                      .map<String>(Bot.escapeMarkdownV2)
+                      .toList(growable: false);
+                  for (final line in lines)
+                    topicBuffer
+                      ..write('• ')
+                      ..writeln(line);
+                }
+                topicBuffer.writeln();
+              }
+
+              // Conclusions
+              if (topic.conclusions.isNotEmpty) {
+                topicBuffer.writeln('*🔍 Conclusions:*');
+                for (final conclusion in topic.conclusions) {
+                  final lines = conclusion
+                      .trim()
+                      .split('\n')
+                      .map<String>((e) => e.trim())
+                      .map<String>(Bot.escapeMarkdownV2)
+                      .toList(growable: false);
+                  for (final line in lines)
+                    topicBuffer
+                      ..write('• ')
+                      ..writeln(line);
+                }
+                topicBuffer.writeln();
+              }
+
+              if (topic.quotes.isNotEmpty) {
+                topicBuffer.writeln('*💬 Quotes:*');
+                for (final quote in topic.quotes) {
+                  final lines = quote.quote
+                      .trim()
+                      .split('\n')
+                      .map<String>((e) => e.trim())
+                      .map<String>(Bot.escapeMarkdownV2)
+                      .toList(growable: false);
+                  if (lines.length > 1) {
+                    // Multiline expandable quote
+                    topicBuffer
+                      ..write('**>')
+                      ..write(Bot.userMention(quote.uid, quote.username))
+                      ..write(': ')
+                      ..writeln(lines.first);
+                    for (var i = 1; i < lines.length - 1; i++) {
+                      topicBuffer
+                        ..write('>')
+                        ..writeln(lines[i]);
+                    }
+                    topicBuffer
+                      ..write('>')
+                      ..write(lines.last)
+                      ..writeln('||');
+                  } else {
+                    // Single line quote
+                    topicBuffer
+                      ..write('**>')
+                      ..write(Bot.userMention(quote.uid, quote.username))
+                      ..write(': ')
+                      ..writeln(lines.first);
+                  }
+                }
+                topicBuffer.writeln();
+              }
+
+              if (buffer.length + topicBuffer.length <= 4000) {
+                buffer.write(topicBuffer.toString()); // Add the topic
+              } else {
+                continue; // Skip the topic if the buffer is too large
+              }
+            }
+
+            if (buffer.length == 0) continue; // Skip the chat if the buffer is empty
+
+            // Add the hashtag
+            buffer
+              ..writeln()
+              ..writeln(Bot.escapeMarkdownV2('#report #summary'));
+
+            // Send new report
+            final _ = await bot.sendMessage(cid, buffer.toString(), disableNotification: true, protectContent: true);
+          } on Object catch (e, s) {
+            l.w(
+              'Failed to send summary for chat $cid'
+              '${switch (chatInfo?.title) {
+                String title => '($title)',
+                _ => '',
+              }}: '
+              '$e',
+              s,
+            );
+          } finally {
+            // Clear the buffer
+            buffer.clear();
+          }
+        }
+      } on Object catch (e, s) {
+        l.w('Failed to send summary: $e', s);
+      } finally {
+        Timer(const Duration(hours: 1), planSummary); // Reschedule the next summary plan
+        db.setKey(lastSummaryKey, DateTime.now().toUtc().toIso8601String());
+      }
+    }
+
+    Timer(duration, sendSummary);
+  }
+
+  planSummary();
 }

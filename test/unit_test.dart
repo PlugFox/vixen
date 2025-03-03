@@ -21,5 +21,11 @@ void main() {
         ),
       );
     });
+
+    test('Get chat short id', () {
+      const chatId = -1002427514092;
+      final shortId = Bot.shortId(chatId);
+      expect(shortId, equals(2427514092));
+    });
   });
 }
