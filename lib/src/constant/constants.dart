@@ -71,6 +71,9 @@ const String updateIdKey = 'update_id';
 /// The key used to store the last reports date in the database.
 const String lastReportKey = 'last_report';
 
+/// The key used to store the last summary date in the database.
+const String lastSummaryKey = 'last_summary';
+
 /// Captcha lifetime in seconds.
 const int captchaLifetime = 1 * 60; // 1 minute
 
@@ -119,9 +122,6 @@ final String defaultCaptchaKeyboard = jsonEncode({
 /// If a users sends the same message more than this number of times as initial
 /// messages, they will be considered as spamming.
 const int spamDuplicateLimit = 4;
-
-/// The hour (server time) at which the daily report should be sent.
-const int reportAtHour = 17;
 
 /// The number of verified users to show in the report.
 const int reportVerifiedLimit = 10;

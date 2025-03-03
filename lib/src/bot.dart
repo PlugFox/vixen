@@ -48,6 +48,9 @@ class Bot {
   /// Format a user mention as a link.
   static String userMention(int uid, String username) => '[${escapeMarkdownV2(username)}](tg://user?id=$uid)';
 
+  /// Get the short ID of a user or chat.
+  static int shortId(int cid) => cid.abs() - 1000000000000; // cid & 0x7FFFFFFF;
+
   /// Format a username from a user object.
   /// [name] - The name of the user if available otherwise the username.
   /// [escaped] - The escaped name of the user.
@@ -222,7 +225,7 @@ class Bot {
     final url = _buildMethodUri('sendMessage');
     final response = await _client.post(
       url,
-      body: _jsonEncoder.convert({
+      body: _jsonEncoder.convert(<String, Object?>{
         'chat_id': chatId,
         'text': text,
         'parse_mode': 'MarkdownV2',

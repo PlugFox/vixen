@@ -8,7 +8,6 @@ import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 import 'package:l/l.dart';
-import 'package:vixen/src/reports.dart';
 import 'package:vixen/vixen.dart';
 
 /// The main entry point of the bot.
@@ -59,8 +58,16 @@ void main(List<String> args) {
         await captchaQueue.start();
         l.i('Captcha queue is running');
 
-        await startServer(arguments: arguments, database: db);
-        l.i('Server is running on ${arguments.address}:${arguments.port}');
+        final summarizer = switch (arguments.openaiKey) {
+          String key when key.length >= 6 => Summarizer(
+            key: key,
+            db: db,
+            model: arguments.openaiModel,
+            url: arguments.openaiUrl,
+          ),
+          _ => null,
+        };
+        if (summarizer != null) l.i('Summarizer is initialized');
 
         final lastUpdateId = arguments.offset ?? db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
@@ -69,8 +76,16 @@ void main(List<String> args) {
           ..start();
         l.i('Bot is running');
 
-        sendReportsTimer(db, bot, arguments.chats);
+        await startServer(arguments: arguments, database: db, bot: bot, summarizer: summarizer);
+        l.i('Server is running on ${arguments.address}:${arguments.port}');
+
+        sendReportsTimer(db, bot, arguments.chats, arguments.reportAtHour);
         l.i('Report sender is running');
+
+        if (summarizer != null) {
+          sendSummaryTimer(summarizer, db, bot, arguments.chats, arguments.reportAtHour);
+          l.i('Summary sender is running');
+        }
 
         updateChatInfos(db, bot, arguments.chats);
         l.i('Chat info updater is running');
@@ -323,7 +338,7 @@ void updateChatInfos(Database db, Bot bot, Set<int> chats) {
 }
 
 /// Periodically sends reports to the chats.
-void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
+void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
   if (chats.isEmpty) return;
   final reports = Reports(db: db);
 
@@ -350,7 +365,6 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
           for (final report in oldReports) bot.deleteMessage(report.chatId, report.messageId).ignore();
         }
 
-        final buffer = StringBuffer();
         for (final cid in chats) {
           ChatInfoData? chatInfo;
           try {
@@ -386,87 +400,17 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
                 .then((r) => r.read<int>('count'));
 
             // Create new report
-            final dateFormat = DateFormat('d MMMM yyyy', 'en_US');
-            const nbsp = '\u00A0';
-            buffer
-              ..write('*📅 Report for chat'.replaceAll(' ', nbsp))
-              ..write(' ')
-              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid').replaceAll(' ', nbsp))
-              ..writeln('*')
-              ..write(nbsp * 8)
-              ..write('_')
-              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
-              ..write(r' \- ')
-               */
-              ..write(Bot.escapeMarkdownV2(dateFormat.format(to).replaceAll(' ', nbsp)))
-              ..writeln('_')
-              ..writeln();
-
-            if (sentMessagesCount > 0) {
-              buffer
-                ..writeln('*📊 Messages count:* $sentMessagesCount')
-                ..writeln();
-            }
-
-            if (deletedMessagesCount > 0) {
-              buffer
-                ..writeln('*🗑️ Deleted messages:* $deletedMessagesCount')
-                ..writeln();
-            }
-
-            if (captchaCount > 0) {
-              buffer
-                ..writeln('*🔒 Captcha messages:* $captchaCount')
-                ..writeln();
-            }
-
-            if (mostActiveUsers.isNotEmpty) {
-              if (mostActiveUsers.length == 1) {
-                final u = mostActiveUsers.single;
-                buffer
-                  ..write('*🥇 Most active user:* ')
-                  ..writeln('${Bot.userMention(u.uid, u.username)} \\(${u.count} msg\\)');
-              } else {
-                buffer.writeln('*🥇 Most active users:*');
-                mostActiveUsers.sort((a, b) => b.count.compareTo(a.count));
-                for (final e in mostActiveUsers.take(5))
-                  buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
-              }
-              buffer.writeln();
-            }
-
-            if (verifiedUsers.isNotEmpty) {
-              if (verifiedUsers.length == 1) {
-                final u = verifiedUsers.single;
-                buffer
-                  ..write('*✅ Verified user:* ')
-                  ..writeln(Bot.userMention(u.uid, u.username));
-              } else {
-                buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
-                for (final e in verifiedUsers.take(reportVerifiedLimit))
-                  buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
-                if (verifiedUsers.length > reportVerifiedLimit)
-                  buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - reportVerifiedLimit} more_');
-              }
-              buffer.writeln();
-            }
-
-            if (bannedUsers.isNotEmpty) {
-              if (bannedUsers.length == 1) {
-                final u = bannedUsers.single;
-                buffer
-                  ..write('*🚫 Banned user:* ')
-                  ..writeln(Bot.escapeMarkdownV2(u.username));
-              } else {
-                buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
-                /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
-                for (final e in bannedUsers.take(reportBannedLimit))
-                  buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
-                if (bannedUsers.length > reportBannedLimit)
-                  buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - reportBannedLimit} more_');
-              }
-              buffer.writeln();
-            }
+            final caption = TelegramMessageComposer.report(
+              chatId: cid,
+              date: to,
+              sentMessagesCount: sentMessagesCount,
+              deletedMessagesCount: deletedMessagesCount,
+              captchaCount: captchaCount,
+              mostActiveUsers: mostActiveUsers,
+              verifiedUsers: verifiedUsers,
+              bannedUsers: bannedUsers,
+              chatInfo: chatInfo,
+            );
 
             // Generate the chart
             final data = await reports.chartData(from: from, to: to, chatId: cid, random: false);
@@ -481,7 +425,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               chatId: cid,
               bytes: chart,
               filename: 'chart-${DateFormat('yyyy-MM-dd').format(to)}.png',
-              caption: buffer.toString(),
+              caption: caption,
               notification: false,
             );
 
@@ -507,9 +451,6 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
               '$e',
               s,
             );
-          } finally {
-            // Clear the buffer
-            buffer.clear();
           }
         }
       } on Object catch (e, s) {
@@ -524,4 +465,59 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats) {
   }
 
   planReport();
+}
+
+/// Periodically sends summaries to the chats.
+void sendSummaryTimer(Summarizer summarizer, Database db, Bot bot, Set<int> chats, int reportAtHour) {
+  if (chats.isEmpty) return;
+
+  void planSummary() {
+    final now = DateTime.now().toUtc();
+    final nextReportTime = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+      reportAtHour,
+    ).add(now.hour >= reportAtHour ? const Duration(days: 1) : Duration.zero);
+
+    final duration = nextReportTime.difference(now);
+
+    Future<void> sendSummary() async {
+      try {
+        final to = DateTime.now().toUtc(), from = to.subtract(const Duration(days: 1));
+        for (final cid in chats) {
+          ChatInfoData? chatInfo;
+          try {
+            chatInfo = await (db.select(db.chatInfo)..where((tbl) => tbl.chatId.equals(cid))).getSingleOrNull();
+            final topics = await summarizer(chatId: cid, from: from, to: to);
+            if (topics.isEmpty) continue;
+            final message = TelegramMessageComposer.summary(chatId: cid, topics: topics, date: to, chatInfo: chatInfo);
+            if (message.isEmpty) continue;
+
+            // Send new summary
+            final _ = await bot.sendMessage(cid, message, disableNotification: true, protectContent: true);
+          } on Object catch (e, s) {
+            l.w(
+              'Failed to send summary for chat $cid'
+              '${switch (chatInfo?.title) {
+                String title => '($title)',
+                _ => '',
+              }}: '
+              '$e',
+              s,
+            );
+          }
+        }
+      } on Object catch (e, s) {
+        l.w('Failed to send summary: $e', s);
+      } finally {
+        Timer(const Duration(hours: 1), planSummary); // Reschedule the next summary plan
+        db.setKey(lastSummaryKey, DateTime.now().toUtc().toIso8601String());
+      }
+    }
+
+    Timer(duration, sendSummary);
+  }
+
+  planSummary();
 }

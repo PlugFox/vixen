@@ -22,6 +22,7 @@ It automatically deletes initial messages from unverified users and supports mul
 - **Cross-Platform**: Runs on Windows, macOS, and Linux, Docker. AMD64 and ARM64 architectures are supported.
 - **Open-Source**: Available under the MIT License.
 - **Reports**: Sends reports about activity in the chat.
+- **Summary**: Sends a summary of the chat activity for the last 24 hours.
 
 ![](.img/captcha_1.webp)
 
