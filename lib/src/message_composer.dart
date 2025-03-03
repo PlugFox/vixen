@@ -163,7 +163,7 @@ abstract final class TelegramMessageComposer {
 
       // Points
       if (topic.points.isNotEmpty) {
-        topicBuffer.writeln('*🔹 Points:*');
+        topicBuffer.writeln('*✨ Points:*');
         for (final point in topic.points) {
           final lines = point
               .trim()
@@ -198,7 +198,6 @@ abstract final class TelegramMessageComposer {
       }
 
       if (topic.quotes.isNotEmpty) {
-        topicBuffer.writeln('*💬 Quotes:*');
         for (final quote in topic.quotes) {
           final lines = quote.quote
               .trim()
@@ -210,8 +209,16 @@ abstract final class TelegramMessageComposer {
             // Multiline expandable quote
             topicBuffer
               ..write('**>')
+              ..write('*')
               ..write(Bot.userMention(quote.uid, quote.username))
-              ..write(': ')
+              ..write(' ')
+              ..write('[')
+              ..write(nbsp)
+              ..write('💬')
+              ..write(nbsp)
+              ..write('](https://t.me/c/${Bot.shortId(chatId)}/${quote.message})')
+              ..write('*')
+              ..write(' ')
               ..writeln(lines.first);
             for (var i = 1; i < lines.length - 1; i++) {
               topicBuffer
@@ -226,8 +233,16 @@ abstract final class TelegramMessageComposer {
             // Single line quote
             topicBuffer
               ..write('**>')
+              ..write('*')
               ..write(Bot.userMention(quote.uid, quote.username))
-              ..write(': ')
+              ..write(' ')
+              ..write('[')
+              ..write(nbsp)
+              ..write('💬')
+              ..write(nbsp)
+              ..write('](https://t.me/c/${Bot.shortId(chatId)}/${quote.message})')
+              ..write('*')
+              ..write(' ')
               ..writeln(lines.first);
           }
         }
