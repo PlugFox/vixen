@@ -79,7 +79,7 @@ Future<Response> $GET$About(Request request) async {
             'type': data.type,
             if (data.title case String value when value.isNotEmpty) 'title': value,
             if (data.description case String value when value.isNotEmpty) 'description': value,
-            'members': DateTime.fromMillisecondsSinceEpoch(data.updatedAt * 1000).toIso8601String(),
+            'updated': DateTime.fromMillisecondsSinceEpoch(data.updatedAt * 1000).toIso8601String(),
           },
         },
     ],
