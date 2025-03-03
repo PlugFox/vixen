@@ -136,7 +136,7 @@ class Summarizer {
       }
     })
     .whereType<SummaryTopic>()
-    .where((e) => e.count > 0)
+    .where((e) => e.count >= 3)
     .toList(growable: false)..sort((a, b) => b.count.compareTo(a.count));
 
   Future<List<SummaryTopic>> call({required int chatId, DateTime? from, DateTime? to}) async {
@@ -169,7 +169,7 @@ class Summarizer {
         .toList(growable: false);
 
     if (summaryMessages.isEmpty) return const <SummaryTopic>[];
-    if (summaryMessages.length < 10) return const <SummaryTopic>[];
+    if (summaryMessages.length < 25) return const <SummaryTopic>[];
     final data = await _fetchSummary(summaryMessages);
     return _extractTopics(data, msgMap);
   }
