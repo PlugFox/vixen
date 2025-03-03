@@ -359,9 +359,20 @@ Future<Response> $GET$Admin$Chart(Request request) async {
           } ??
           DateTime.now();
   if (from.isAfter(to)) (from, to) = (to, from);
+  var $chatId = switch (request.url.queryParameters['cid']) {
+    String value when value.isNotEmpty => int.tryParse(value),
+    _ => null,
+  };
+  final sendTo = switch (request.url.queryParameters['send']) {
+    String value when value.isNotEmpty => int.tryParse(value),
+    _ when request.url.queryParameters.containsKey('send') => $chatId,
+    _ => null,
+  };
+  final chatId = $chatId ?? sendTo;
+
   final db = Dependencies.of(request).database;
   final reports = Reports(db: db);
-  final data = await reports.chartData(from: from, to: to);
+  final data = await reports.chartData(from: from, to: to, chatId: chatId);
   final dates = data.parts.map((e) => DateTime.fromMillisecondsSinceEpoch(e * 1000).toUtc()).toList(growable: false);
   final parts = data.parts
       .mapIndexed(
@@ -401,10 +412,22 @@ Future<Response> $GET$Admin$ChartPng(Request request) async {
           } ??
           DateTime.now();
   if (from.isAfter(to)) (from, to) = (to, from);
+  var $chatId = switch (request.url.queryParameters['cid']) {
+    String value when value.isNotEmpty => int.tryParse(value),
+    _ => null,
+  };
+  final sendTo = switch (request.url.queryParameters['send']) {
+    String value when value.isNotEmpty => int.tryParse(value),
+    _ when request.url.queryParameters.containsKey('send') => $chatId,
+    _ => null,
+  };
+  final chatId = $chatId ?? sendTo;
+
   final db = Dependencies.of(request).database;
   final reports = Reports(db: db);
-  final data = await reports.chartData(from: from, to: to);
+  final data = await reports.chartData(from: from, to: to, chatId: chatId);
   final bytes = await reports.chartPng(data: data, width: 720, height: 360);
+
   return Responses.ok(
     bytes,
     headers: <String, String>{
