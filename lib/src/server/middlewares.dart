@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 import 'package:stack_trace/stack_trace.dart' as st;
 import 'package:vixen/src/arguments.dart';
+import 'package:vixen/src/bot.dart';
 import 'package:vixen/src/database.dart';
 import 'package:vixen/src/server/responses.dart';
 import 'package:vixen/src/summarizer.dart';
@@ -155,7 +156,7 @@ Middleware injector(Dependencies dependencies, {Map<String, Object?>? extra}) =>
 
 @immutable
 final class Dependencies {
-  const Dependencies({required this.arguments, required this.database, required this.summarizer});
+  const Dependencies({required this.arguments, required this.database, required this.bot, required this.summarizer});
 
   factory Dependencies.of(Request request) => request.context[_key] as Dependencies;
 
@@ -169,6 +170,9 @@ final class Dependencies {
 
   /// SQLite database.
   final Database database;
+
+  /// Bot instance.
+  final Bot bot;
 
   /// OpenAI summarizer.
   final Summarizer? summarizer;

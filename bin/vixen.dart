@@ -69,15 +69,15 @@ void main(List<String> args) {
         };
         if (summarizer != null) l.i('Summarizer is initialized');
 
-        await startServer(arguments: arguments, database: db, summarizer: summarizer);
-        l.i('Server is running on ${arguments.address}:${arguments.port}');
-
         final lastUpdateId = arguments.offset ?? db.getKey<int>(updateIdKey);
         final bot = Bot(token: arguments.token, offset: lastUpdateId);
         bot
           ..addHandler(handler(arguments: arguments, bot: bot, db: db, captchaQueue: captchaQueue))
           ..start();
         l.i('Bot is running');
+
+        await startServer(arguments: arguments, database: db, bot: bot, summarizer: summarizer);
+        l.i('Server is running on ${arguments.address}:${arguments.port}');
 
         sendReportsTimer(db, bot, arguments.chats, arguments.reportAtHour);
         l.i('Report sender is running');
@@ -365,7 +365,6 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
           for (final report in oldReports) bot.deleteMessage(report.chatId, report.messageId).ignore();
         }
 
-        final buffer = StringBuffer();
         for (final cid in chats) {
           ChatInfoData? chatInfo;
           try {
@@ -401,92 +400,17 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
                 .then((r) => r.read<int>('count'));
 
             // Create new report
-            final dateFormat = DateFormat('d MMMM yyyy', 'en_US');
-            const nbsp = '\u00A0';
-            buffer
-              ..write('*📅 Report for chat'.replaceAll(' ', nbsp))
-              ..write(' ')
-              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid').replaceAll(' ', nbsp))
-              ..writeln('*')
-              ..write(nbsp * 8)
-              ..write('_')
-              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
-              ..write(r' \- ')
-               */
-              ..write(Bot.escapeMarkdownV2(dateFormat.format(to).replaceAll(' ', nbsp)))
-              ..writeln('_')
-              ..writeln();
-
-            if (sentMessagesCount > 0) {
-              buffer
-                ..writeln('*📊 Messages count:* $sentMessagesCount')
-                ..writeln();
-            }
-
-            if (deletedMessagesCount > 0) {
-              buffer
-                ..writeln('*🗑️ Deleted messages:* $deletedMessagesCount')
-                ..writeln();
-            }
-
-            if (captchaCount > 0) {
-              buffer
-                ..writeln('*🔒 Captcha messages:* $captchaCount')
-                ..writeln();
-            }
-
-            if (mostActiveUsers.isNotEmpty) {
-              if (mostActiveUsers.length == 1) {
-                final u = mostActiveUsers.single;
-                buffer
-                  ..write('*🥇 Most active user:* ')
-                  ..writeln('${Bot.userMention(u.uid, u.username)} \\(${u.count} msg\\)');
-              } else {
-                buffer.writeln('*🥇 Most active users:*');
-                mostActiveUsers.sort((a, b) => b.count.compareTo(a.count));
-                for (final e in mostActiveUsers.take(5))
-                  buffer.writeln('• ${Bot.userMention(e.uid, e.username)} \\(${e.count} msg\\)');
-              }
-              buffer.writeln();
-            }
-
-            if (verifiedUsers.isNotEmpty) {
-              if (verifiedUsers.length == 1) {
-                final u = verifiedUsers.single;
-                buffer
-                  ..write('*✅ Verified user:* ')
-                  ..writeln(Bot.userMention(u.uid, u.username));
-              } else {
-                buffer.writeln('*✅ Verified ${verifiedUsers.length} users:*');
-                for (final e in verifiedUsers.take(reportVerifiedLimit))
-                  buffer.writeln('• ${Bot.userMention(e.uid, e.username)}');
-                if (verifiedUsers.length > reportVerifiedLimit)
-                  buffer.writeln('\\.\\.\\. _and ${verifiedUsers.length - reportVerifiedLimit} more_');
-              }
-              buffer.writeln();
-            }
-
-            if (bannedUsers.isNotEmpty) {
-              if (bannedUsers.length == 1) {
-                final u = bannedUsers.single;
-                buffer
-                  ..write('*🚫 Banned user:* ')
-                  ..writeln(Bot.escapeMarkdownV2(u.username));
-              } else {
-                buffer.writeln('*🚫 Banned ${bannedUsers.length} users:*');
-                /* \\(${Bot.escapeMarkdownV2(e.reason ?? 'Unknown')}\\) */
-                for (final e in bannedUsers.take(reportBannedLimit))
-                  buffer.writeln('• ${Bot.escapeMarkdownV2(e.username)}');
-                if (bannedUsers.length > reportBannedLimit)
-                  buffer.writeln('\\.\\.\\. _and ${bannedUsers.length - reportBannedLimit} more_');
-              }
-              buffer.writeln();
-            }
-
-            // Add the hashtag
-            buffer
-              ..writeln()
-              ..writeln(Bot.escapeMarkdownV2('#report #chart'));
+            final caption = TelegramMessageComposer.report(
+              chatId: cid,
+              date: to,
+              sentMessagesCount: sentMessagesCount,
+              deletedMessagesCount: deletedMessagesCount,
+              captchaCount: captchaCount,
+              mostActiveUsers: mostActiveUsers,
+              verifiedUsers: verifiedUsers,
+              bannedUsers: bannedUsers,
+              chatInfo: chatInfo,
+            );
 
             // Generate the chart
             final data = await reports.chartData(from: from, to: to, chatId: cid, random: false);
@@ -501,7 +425,7 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
               chatId: cid,
               bytes: chart,
               filename: 'chart-${DateFormat('yyyy-MM-dd').format(to)}.png',
-              caption: buffer.toString(),
+              caption: caption,
               notification: false,
             );
 
@@ -527,9 +451,6 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
               '$e',
               s,
             );
-          } finally {
-            // Clear the buffer
-            buffer.clear();
           }
         }
       } on Object catch (e, s) {
@@ -564,146 +485,17 @@ void sendSummaryTimer(Summarizer summarizer, Database db, Bot bot, Set<int> chat
     Future<void> sendSummary() async {
       try {
         final to = DateTime.now().toUtc(), from = to.subtract(const Duration(days: 1));
-
-        // Delete the old report
-        {
-          final oldReports =
-              await (db.delete(db.reportMessage)..where((tbl) => tbl.type.equals('report'))).goAndReturn();
-          for (final report in oldReports) bot.deleteMessage(report.chatId, report.messageId).ignore();
-        }
-
-        final buffer = StringBuffer();
         for (final cid in chats) {
           ChatInfoData? chatInfo;
           try {
             chatInfo = await (db.select(db.chatInfo)..where((tbl) => tbl.chatId.equals(cid))).getSingleOrNull();
             final topics = await summarizer(chatId: cid, from: from, to: to);
             if (topics.isEmpty) continue;
+            final message = TelegramMessageComposer.summary(chatId: cid, topics: topics, date: to, chatInfo: chatInfo);
+            if (message.isEmpty) continue;
 
-            final dateFormat = DateFormat('d MMMM yyyy', 'en_US');
-            const nbsp = '\u00A0';
-            buffer
-              ..write('*📌 Summary for chat'.replaceAll(' ', nbsp))
-              ..write(' ')
-              ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$cid').replaceAll(' ', nbsp))
-              ..writeln('*')
-              ..write(nbsp * 8)
-              ..write('_')
-              /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
-              ..write(r' \- ')
-               */
-              ..write(Bot.escapeMarkdownV2(dateFormat.format(to).replaceAll(' ', nbsp)))
-              ..writeln('_')
-              ..writeln();
-
-            for (final topic in topics) {
-              final topicBuffer =
-                  StringBuffer()
-                    ..write('*')
-                    ..write(Bot.escapeMarkdownV2(topic.title))
-                    ..write('*')
-                    ..write(' - [')
-                    ..write(Bot.escapeMarkdownV2(topic.count.toString()))
-                    ..write(' ${topic.count > 1 ? 'messages' : 'message'}]')
-                    ..write('(https://t.me/c/${Bot.shortId(cid)}/${topic.message})')
-                    ..writeln();
-
-              // Summary
-              if (topic.summary.isNotEmpty) {
-                topicBuffer
-                  ..writeln(Bot.escapeMarkdownV2(topic.summary))
-                  ..writeln();
-              }
-
-              // Points
-              if (topic.points.isNotEmpty) {
-                topicBuffer.writeln('*📝 Points:*');
-                for (final point in topic.points) {
-                  final lines = point
-                      .trim()
-                      .split('\n')
-                      .map<String>((e) => e.trim())
-                      .map<String>(Bot.escapeMarkdownV2)
-                      .toList(growable: false);
-                  for (final line in lines)
-                    topicBuffer
-                      ..write('• ')
-                      ..writeln(line);
-                }
-                topicBuffer.writeln();
-              }
-
-              // Conclusions
-              if (topic.conclusions.isNotEmpty) {
-                topicBuffer.writeln('*🔍 Conclusions:*');
-                for (final conclusion in topic.conclusions) {
-                  final lines = conclusion
-                      .trim()
-                      .split('\n')
-                      .map<String>((e) => e.trim())
-                      .map<String>(Bot.escapeMarkdownV2)
-                      .toList(growable: false);
-                  for (final line in lines)
-                    topicBuffer
-                      ..write('• ')
-                      ..writeln(line);
-                }
-                topicBuffer.writeln();
-              }
-
-              if (topic.quotes.isNotEmpty) {
-                topicBuffer.writeln('*💬 Quotes:*');
-                for (final quote in topic.quotes) {
-                  final lines = quote.quote
-                      .trim()
-                      .split('\n')
-                      .map<String>((e) => e.trim())
-                      .map<String>(Bot.escapeMarkdownV2)
-                      .toList(growable: false);
-                  if (lines.length > 1) {
-                    // Multiline expandable quote
-                    topicBuffer
-                      ..write('**>')
-                      ..write(Bot.userMention(quote.uid, quote.username))
-                      ..write(': ')
-                      ..writeln(lines.first);
-                    for (var i = 1; i < lines.length - 1; i++) {
-                      topicBuffer
-                        ..write('>')
-                        ..writeln(lines[i]);
-                    }
-                    topicBuffer
-                      ..write('>')
-                      ..write(lines.last)
-                      ..writeln('||');
-                  } else {
-                    // Single line quote
-                    topicBuffer
-                      ..write('**>')
-                      ..write(Bot.userMention(quote.uid, quote.username))
-                      ..write(': ')
-                      ..writeln(lines.first);
-                  }
-                }
-                topicBuffer.writeln();
-              }
-
-              if (buffer.length + topicBuffer.length <= 4000) {
-                buffer.write(topicBuffer.toString()); // Add the topic
-              } else {
-                continue; // Skip the topic if the buffer is too large
-              }
-            }
-
-            if (buffer.length == 0) continue; // Skip the chat if the buffer is empty
-
-            // Add the hashtag
-            buffer
-              ..writeln()
-              ..writeln(Bot.escapeMarkdownV2('#report #summary'));
-
-            // Send new report
-            final _ = await bot.sendMessage(cid, buffer.toString(), disableNotification: true, protectContent: true);
+            // Send new summary
+            final _ = await bot.sendMessage(cid, message, disableNotification: true, protectContent: true);
           } on Object catch (e, s) {
             l.w(
               'Failed to send summary for chat $cid'
@@ -714,9 +506,6 @@ void sendSummaryTimer(Summarizer summarizer, Database db, Bot bot, Set<int> chat
               '$e',
               s,
             );
-          } finally {
-            // Clear the buffer
-            buffer.clear();
           }
         }
       } on Object catch (e, s) {

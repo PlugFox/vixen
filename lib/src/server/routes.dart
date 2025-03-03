@@ -4,11 +4,9 @@ import 'dart:io' as io;
 import 'package:collection/collection.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:vixen/src/constant/pubspec.yaml.g.dart' show Pubspec;
-import 'package:vixen/src/database.dart';
-import 'package:vixen/src/reports.dart' show Reports;
 import 'package:vixen/src/server/middlewares.dart';
 import 'package:vixen/src/server/responses.dart';
+import 'package:vixen/vixen.dart';
 
 final Router $router =
     Router(notFoundHandler: $ALL$NotFound)
@@ -440,14 +438,32 @@ Future<Response> $GET$Admin$Summary(Request request) async {
             _ => null,
           } ??
           DateTime.now();
-  final summarizer = Dependencies.of(request).summarizer;
+  final deps = Dependencies.of(request);
+  final summarizer = deps.summarizer;
   if (summarizer == null)
     return Responses.error(const ServiceUnavailableException(detail: 'Summarizer is not available'));
   try {
+    final sendTo = switch (request.url.queryParameters['send']) {
+      String value when value.isNotEmpty => int.tryParse(value),
+      _ when request.url.queryParameters.containsKey('send') => cid,
+      _ => null,
+    };
+
     final topics = await summarizer(chatId: cid, from: from, to: to);
+
+    int? sentMessageId;
+    if (sendTo != null && topics.isNotEmpty) {
+      final db = deps.database;
+      final chatInfo = await (db.select(db.chatInfo)..where((tbl) => tbl.chatId.equals(cid))).getSingleOrNull();
+      final message = TelegramMessageComposer.summary(chatId: cid, topics: topics, date: to, chatInfo: chatInfo);
+      if (message.isNotEmpty)
+        sentMessageId = await deps.bot.sendMessage(sendTo, message, disableNotification: true, protectContent: true);
+    }
+
     return Responses.ok(<String, Object?>{
       'from': from.toIso8601String(),
       'to': to.toIso8601String(),
+      if (sentMessageId != null) 'sent': <String, Object?>{'chat_id': sendTo, 'message_id': sentMessageId},
       'length': topics.length,
       'topics':
           topics.isEmpty
@@ -458,11 +474,17 @@ Future<Response> $GET$Admin$Summary(Request request) async {
                       'title': e.title,
                       'summary': e.summary,
                       'message': e.message,
+                      'count': e.count,
                       'points': e.points.map((e) => e).toList(growable: false),
                       'conclusions': e.conclusions.map((e) => e).toList(growable: false),
                       'quotes': e.quotes
                           .map(
-                            (e) => <String, Object?>{'quote': e.quote, 'username': e.username, 'message_id': e.message},
+                            (e) => <String, Object?>{
+                              'quote': e.quote,
+                              'uid': e.uid,
+                              'username': e.username,
+                              'message_id': e.message,
+                            },
                           )
                           .toList(growable: false),
                     },

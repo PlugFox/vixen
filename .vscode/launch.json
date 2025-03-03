@@ -25,6 +25,7 @@
       "args": [],
       "env": {
         "CONFIG_VERBOSE": "debug",
+        "CONFIG_OFFSET": "0",
       }
     },
     {
