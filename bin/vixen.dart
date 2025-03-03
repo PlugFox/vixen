@@ -604,7 +604,7 @@ void sendSummaryTimer(Summarizer summarizer, Database db, Bot bot, Set<int> chat
                     ..write('*')
                     ..write(' - [')
                     ..write(Bot.escapeMarkdownV2(topic.count.toString()))
-                    ..write(' messages]')
+                    ..write(' ${topic.count > 1 ? 'messages' : 'message'}]')
                     ..write('(https://t.me/c/${Bot.shortId(cid)}/${topic.message})')
                     ..writeln();
 
