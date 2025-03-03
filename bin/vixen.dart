@@ -106,8 +106,12 @@ void main(List<String> args) {
           String text => text,
           Object obj => obj.toString(),
         };
-        if (kReleaseMode)
-          message = message.replaceAll(arguments.secret, '******').replaceAll(arguments.token, '******');
+        if (kReleaseMode) {
+          // Hide sensitive data in release mode
+          if (arguments.secret case String key when key.isNotEmpty) message = message.replaceAll(key, '******');
+          if (arguments.token case String key when key.isNotEmpty) message = message.replaceAll(key, '******');
+          if (arguments.openaiKey case String key when key.isNotEmpty) message = message.replaceAll(key, '******');
+        }
         return '[${event.level.prefix}] '
             '${DateFormat('dd.MM.yyyy HH:mm:ss').format(event.timestamp)} '
             '| $message';
