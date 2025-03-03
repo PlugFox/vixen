@@ -31,7 +31,7 @@ abstract final class TelegramMessageComposer {
       ..write(' ')
       ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$chatId').replaceAll(' ', nbsp))
       ..writeln('*')
-      ..write(nbsp * 8)
+      ..write(nbsp * 6)
       ..write('_')
       /* ..write(Bot.escapeMarkdownV2(dateFormat.format(from)))
               ..write(r' \- ')
@@ -123,13 +123,13 @@ abstract final class TelegramMessageComposer {
     final buffer = StringBuffer();
 
     final dateFormat = DateFormat('d MMMM yyyy', 'en_US');
-    const nbsp = '\u00A0';
+
     buffer
       ..write('*📝 Summary for chat'.replaceAll(' ', nbsp))
       ..write(' ')
       ..write(Bot.escapeMarkdownV2(chatInfo?.title ?? '$chatId').replaceAll(' ', nbsp))
       ..writeln('*')
-      ..write(nbsp * 8)
+      ..write(nbsp * 6)
       ..write('_')
       ..write(Bot.escapeMarkdownV2(dateFormat.format(date).replaceAll(' ', nbsp)))
       ..writeln('_')
@@ -142,11 +142,14 @@ abstract final class TelegramMessageComposer {
             ..write('*')
             ..write('📌 ')
             ..write(Bot.escapeMarkdownV2(topic.title))
-            ..write('*')
-            ..write(r' \- [')
+            ..writeln('*')
+            ..write(nbsp * 6)
+            ..write('_')
+            ..write('[')
             ..write(Bot.escapeMarkdownV2(topic.count.toString()))
             ..write(' ${topic.count > 1 ? 'messages' : 'message'}]')
             ..write('(https://t.me/c/${Bot.shortId(chatId)}/${topic.message})')
+            ..writeln('_')
             ..writeln();
 
       // Summary
@@ -158,7 +161,7 @@ abstract final class TelegramMessageComposer {
 
       // Points
       if (topic.points.isNotEmpty) {
-        topicBuffer.writeln('*📝 Points:*');
+        topicBuffer.writeln('*🔹 Points:*');
         for (final point in topic.points) {
           final lines = point
               .trim()
@@ -234,7 +237,8 @@ abstract final class TelegramMessageComposer {
         if (!first)
           buffer
             ..writeln('')
-            ..writeln('`${'▬' * 10}`')
+            ..writeln('▬' * 10)
+            ..writeln('')
             ..writeln('');
         buffer.write(topicBuffer.toString()); // Add the topic
         first = false;
