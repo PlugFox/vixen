@@ -526,7 +526,7 @@ void sendSummaryTimer(Summarizer summarizer, Database db, Bot bot, Set<int> chat
       }
     }
 
-    Timer(duration, sendSummary);
+    Timer(duration + const Duration(seconds: 5), sendSummary);
   }
 
   planSummary();
