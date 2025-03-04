@@ -443,4 +443,31 @@ class Bot {
       throw Exception('Failed to get chat info');
     }
   }
+
+  /// React to a message with an emoji.
+  /// "👍", "👎", "❤", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱", "🤬", "😢", "🎉", "🤩", "🤮", "💩", "🙏", "👌", "🕊", "🤡",
+  /// "🥱", "🥴", "😍", "🐳", "❤‍🔥", "🌚", "🌭", "💯", "🤣", "⚡", "🍌", "🏆", "💔", "🤨", "😐", "🍓", "🍾", "💋", "🖕", "😈",
+  /// "😴", "😭", "🤓", "👻", "👨‍💻", "👀", "🎃", "🙈", "😇", "😨", "🤝", "✍", "🤗", "🫡", "🎅", "🎄", "☃", "💅", "🤪", "🗿",
+  /// "🆒", "💘", "🙉", "🦄", "😘", "💊", "🙊", "😎", "👾", "🤷‍♂", "🤷", "🤷‍♀", "😡"
+  Future<void> setMessageReaction({
+    required int chatId,
+    required int messageId,
+    required String reaction,
+    bool big = true,
+  }) async {
+    final url = _buildMethodUri('setMessageReaction');
+    final response = await _client.post(
+      url,
+      body: _jsonEncoder.convert(<String, Object?>{
+        'chat_id': chatId,
+        'message_id': messageId,
+        'reaction': '[{"type":"emoji","emoji":"$reaction"}]',
+        'big': big,
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) return;
+    l.w('Failed to set message reaction: status code ${response.statusCode}', StackTrace.current);
+    throw Exception('Failed to set message reaction: status code ${response.statusCode}');
+  }
 }

@@ -13,6 +13,7 @@
         "CONFIG_VERBOSE": "debug",
         "CONFIG_DATABASE": ":memory:",
         "CONFIG_OFFSET": "0",
+        "CONFIG_CLOWN": "75",
       },
     },
     {
@@ -26,6 +27,7 @@
       "env": {
         "CONFIG_VERBOSE": "debug",
         "CONFIG_OFFSET": "0",
+        "CONFIG_CLOWN": "75",
       }
     },
     {

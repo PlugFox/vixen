@@ -177,7 +177,13 @@ void Function(int updateId, Map<String, Object?> update) handler({
   required CaptchaQueue captchaQueue,
   Duration interval = const Duration(seconds: 5),
 }) {
-  final messageHandler = MessageHandler(chats: arguments.chats, db: db, bot: bot, captchaQueue: captchaQueue);
+  final messageHandler = MessageHandler(
+    chats: arguments.chats,
+    db: db,
+    bot: bot,
+    captchaQueue: captchaQueue,
+    clownChance: arguments.clownChance,
+  );
   final callbackHandler = CallbackHandler(chats: arguments.chats, db: db, bot: bot, captchaQueue: captchaQueue);
 
   var lastOffset = 0;

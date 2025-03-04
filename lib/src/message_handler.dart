@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:l/l.dart';
 import 'package:vixen/src/bot.dart';
@@ -45,16 +46,34 @@ import 'package:xxh3/xxh3.dart' as xxh3;
 */
 
 class MessageHandler {
-  MessageHandler({required Set<int> chats, required Database db, required Bot bot, required CaptchaQueue captchaQueue})
-    : _chats = chats,
-      _db = db,
-      _bot = bot,
-      _captchaQueue = captchaQueue;
+  MessageHandler({
+    required Set<int> chats,
+    required Database db,
+    required Bot bot,
+    required CaptchaQueue captchaQueue,
+    required int clownChance,
+  }) : _chats = chats,
+       _db = db,
+       _bot = bot,
+       _captchaQueue = captchaQueue,
+       _clownChance = clownChance.clamp(0, 100);
 
+  static final math.Random _rnd = math.Random();
+
+  /// Chats to handle messages.
   final Set<int> _chats;
+
+  /// SQLite database.
   final Database _db;
+
+  /// Telegram bot.
   final Bot _bot;
+
+  /// Queue of captchas to send to users.
   final CaptchaQueue _captchaQueue;
+
+  /// Chance to send a clown reaction to a message.
+  final int _clownChance;
 
   // --- Delete messages --- //
 
@@ -161,6 +180,14 @@ class MessageHandler {
                 mode: InsertMode.insertOrReplace,
               )
               .ignore();
+
+          // Send a clown reaction to the message
+          {
+            final clownRng = _rnd.nextInt(100);
+            if (_clownChance != 0 && clownRng < _clownChance)
+              _bot.setMessageReaction(chatId: chatId, messageId: messageId, reaction: '🤡').ignore();
+          }
+
           l.d('User $userId is verified, allowed message $messageId in chat $chatId');
           return;
         }

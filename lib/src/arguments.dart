@@ -106,6 +106,14 @@ ArgParser _buildParser() =>
         help: 'The hour (server time) at which the daily report should be sent',
         defaultsTo: '17',
         valueHelp: '17',
+      )
+      ..addOption(
+        'clown',
+        aliases: ['clown-chance', 'clown-reaction'],
+        mandatory: false,
+        help: 'Chance of clown reaction in percent (0-100) for each message',
+        defaultsTo: '0',
+        valueHelp: '75',
       );
 
 /// Arguments for current project
@@ -129,6 +137,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
         'openai-model',
         'openai-url',
         'report-hour',
+        'clown',
       };
       assert(flags.length + options.length == parser.options.length, 'All options must be accounted for.');
       final table = <String, String>{
@@ -198,6 +207,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
         openaiModel: table['openai-model'],
         openaiUrl: table['openai-url'],
         reportAtHour: int.tryParse(table['report-hour'] ?? '17') ?? 17,
+        clownChance: int.tryParse(table['clown'] ?? '0')?.clamp(0, 100) ?? 0,
       );
     } on FormatException {
       io.stderr
@@ -231,6 +241,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     required this.openaiModel,
     required this.openaiUrl,
     required this.reportAtHour,
+    required this.clownChance,
     required Map<String, String> arguments,
   }) : _arguments = arguments;
 
@@ -269,6 +280,9 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// The hour (server time) at which the daily report should be sent
   final int reportAtHour;
+
+  /// Chance of clown reaction in percent (0-100) for each message
+  final int clownChance;
 
   /// Arguments
   final Map<String, String> _arguments;
