@@ -150,7 +150,7 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
                 (e) => LoggerCompanion.insert(
                   level: e.level.level,
                   message: e.message.toString(),
-                  time: Value(e.timestamp.millisecondsSinceEpoch),
+                  time: Value(e.timestamp.millisecondsSinceEpoch ~/ 1000),
                   stack: switch (e) {
                     LogMessageError msg => Value<String?>(msg.stackTrace.toString()),
                     _ => const Value<String?>.absent(),
