@@ -84,19 +84,22 @@ dart run bin/vixen.dart
 
 ## ⚙️ Configuration
 
-| Argument         | Environment           | Description                               | Default         |
-| ---------------- | --------------------- | ----------------------------------------- | --------------- |
-| `-t` `--token`   | `CONFIG_TOKEN`        | **(Required)** Telegram bot token         | —               |
-| `-c` `--chats`   | `CONFIG_CHATS`        | Comma-separated list of chat IDs          | —               |
-| `-s` `--secret`  | `CONFIG_SECRET`       | Secret admin API key                      | —               |
-| `-d` `--db`      | `CONFIG_DB`           | Path to the SQLite database file          | `data/vixen.db` |
-| `-a` `--address` | `CONFIG_ADDRESS`      | Address to bind the server to             | `0.0.0.0`       |
-| `-p` `--port`    | `CONFIG_PORT`         | Port to bind the server to                | `8080`          |
-| `-v` `--verbose` | `CONFIG_VERBOSE`      | Logs: `all`/`debug`/`info`/`warn`/`error` | `warn`          |
-| `--report-hour`  | `CONFIG_REPORT-HOUR`  | The hour to send daily report             | `17`            |
-| `--openai-key`   | `CONFIG_OPENAI-KEY`   | OpenAI API key for summarization          | —               |
-| `--openai-url`   | `CONFIG_OPENAI-URL`   | OpenAI API endpoint                       | —               |
-| `--openai-model` | `CONFIG_OPENAI-MODEL` | OpenAI model                              | `gpt-4o-mini`   |
+| Argument         | Environment           | Description                                | Default         |
+| ---------------- | --------------------- | ------------------------------------------ | --------------- |
+| `-t` `--token`   | `CONFIG_TOKEN`        | **(Required)** Telegram bot token          | —               |
+| `-c` `--chats`   | `CONFIG_CHATS`        | Comma-separated list of chat IDs           | —               |
+| `-s` `--secret`  | `CONFIG_SECRET`       | Secret admin API key                       | —               |
+| `-d` `--db`      | `CONFIG_DB`           | Path to the SQLite database file           | `data/vixen.db` |
+| `-a` `--address` | `CONFIG_ADDRESS`      | Address to bind the server to              | `0.0.0.0`       |
+| `-p` `--port`    | `CONFIG_PORT`         | Port to bind the server to                 | `8080`          |
+| `-v` `--verbose` | `CONFIG_VERBOSE`      | Logs: `all`/`debug`/`info`/`warn`/`error`  | `warn`          |
+| `--offset`       | `CONFIG_OFFSET`       | Offset for Telegram updates                | -               |
+| `--cas`          | `CONFIG_CAS`          | Check messages with Combot Anti-Spam (CAS) | `on`            |
+| `--report-hour`  | `CONFIG_REPORT-HOUR`  | The hour to send daily report              | `17`            |
+| `--openai-key`   | `CONFIG_OPENAI-KEY`   | OpenAI API key for summarization           | —               |
+| `--openai-url`   | `CONFIG_OPENAI-URL`   | OpenAI API endpoint                        | —               |
+| `--openai-model` | `CONFIG_OPENAI-MODEL` | OpenAI model                               | `gpt-4o-mini`   |
+| `--clown`        | `CONFIG_CLOWN`        | Chance of clown reaction for each message  | `0`             |
 
 To see all available options, run:
 

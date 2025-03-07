@@ -182,6 +182,7 @@ void Function(int updateId, Map<String, Object?> update) handler({
     db: db,
     bot: bot,
     captchaQueue: captchaQueue,
+    combotAntiSpam: arguments.combotAntiSpam,
     clownChance: arguments.clownChance,
   );
   final callbackHandler = CallbackHandler(chats: arguments.chats, db: db, bot: bot, captchaQueue: captchaQueue);

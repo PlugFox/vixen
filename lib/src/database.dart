@@ -106,7 +106,8 @@ class Database extends _$Database
     }
 
     path = path?.trim().toLowerCase();
-    if (memoryDatabase || path == ':memory:') {
+    const memory = <String>{':memory:', 'memory', 'mem', 'ram', 'tempdb', 'temp', 'tmp', 'test', 'testing', 'debug'};
+    if (memoryDatabase || memory.contains(path)) {
       return ffi.NativeDatabase.memory(
         logStatements: logStatements,
         /* setup: (db) {}, */
