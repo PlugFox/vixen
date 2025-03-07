@@ -48,16 +48,18 @@ class Summarizer {
       'response_format': <String, Object?>{'type': 'json_object'},
     };
 
-    final response = await _client.post(
-      _url,
-      headers: <String, String>{
-        'Authorization': 'Bearer $_key',
-        'Content-Type': 'application/json; charset=utf-8',
-        'Accept': 'application/json',
-        'Accept-Charset': 'UTF-8',
-      },
-      body: bodyEncoder.convert(requestBody),
-    );
+    final response = await _client
+        .post(
+          _url,
+          headers: <String, String>{
+            'Authorization': 'Bearer $_key',
+            'Content-Type': 'application/json; charset=utf-8',
+            'Accept': 'application/json',
+            'Accept-Charset': 'UTF-8',
+          },
+          body: bodyEncoder.convert(requestBody),
+        )
+        .timeout(const Duration(seconds: 10 * 60)); // 10 minutes
 
     if (response.statusCode != 200)
       throw Exception('Failed to summarize chat messages: ${response.statusCode} ${response.body}');

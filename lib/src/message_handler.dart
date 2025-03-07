@@ -150,7 +150,7 @@ class MessageHandler {
     try {
       final response = await _httpClient
           .get(_combotAntiSpamUri.replace(queryParameters: <String, String>{'user_id': userId.toString()}))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 3)); // Timeout after 3 seconds
       const allowedStatusCodes = {100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 304};
       if (!allowedStatusCodes.contains(response.statusCode)) {
         l.d('Failed to check user $userId with Combot Anti-Spam');

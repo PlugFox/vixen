@@ -120,7 +120,7 @@ class Bot {
   /// Fetch updates from the Telegram API.
   @pragma('vm:prefer-inline')
   Future<List<({int id, Map<String, Object?> update})>> _getUpdates(Uri url) async {
-    final response = await _client.get(url);
+    final response = await _client.get(url).timeout(_interval * 2);
     if (response.statusCode != 200) {
       l.w('Failed to fetch updates: status code ${response.statusCode}', StackTrace.current);
       return const [];
@@ -223,17 +223,19 @@ class Bot {
     bool protectContent = true,
   }) async {
     final url = _buildMethodUri('sendMessage');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert(<String, Object?>{
-        'chat_id': chatId,
-        'text': text,
-        'parse_mode': 'MarkdownV2',
-        'disable_notification': disableNotification,
-        'protect_content': protectContent,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert(<String, Object?>{
+            'chat_id': chatId,
+            'text': text,
+            'parse_mode': 'MarkdownV2',
+            'disable_notification': disableNotification,
+            'protect_content': protectContent,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) throw Exception('Failed to send message: status code ${response.statusCode}');
     final result = _jsonDecoder.convert(response.bodyBytes);
     if (result case <String, Object?>{'ok': true, 'result': <String, Object?>{'message_id': int messageId}}) {
@@ -287,20 +289,22 @@ class Bot {
   /// Edit a photo caption in a chat.
   Future<void> editPhotoCaption({required int chatId, required int messageId, String? caption, String? reply}) async {
     final url = _buildMethodUri('editMessageCaption');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert({
-        'chat_id': chatId,
-        'message_id': messageId,
-        if (caption != null) ...<String, Object?>{
-          'parse_mode': 'MarkdownV2',
-          'caption': caption,
-          'show_caption_above_media': true,
-        },
-        if (reply != null) 'reply_markup': reply,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert({
+            'chat_id': chatId,
+            'message_id': messageId,
+            if (caption != null) ...<String, Object?>{
+              'parse_mode': 'MarkdownV2',
+              'caption': caption,
+              'show_caption_above_media': true,
+            },
+            if (reply != null) 'reply_markup': reply,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to edit photo caption: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to edit photo caption: status code ${response.statusCode}');
@@ -341,15 +345,17 @@ class Bot {
   /// Answer a callback query.
   Future<void> answerCallbackQuery(String callbackQueryId, String text, {bool arlert = false}) async {
     final url = _buildMethodUri('answerCallbackQuery');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert({
-        'callback_query_id': callbackQueryId,
-        if (text.isNotEmpty) 'text': text,
-        if (arlert) 'show_alert': arlert,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert({
+            'callback_query_id': callbackQueryId,
+            if (text.isNotEmpty) 'text': text,
+            if (arlert) 'show_alert': arlert,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to answer callback query: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to answer callback query: status code ${response.statusCode}');
@@ -358,11 +364,13 @@ class Bot {
   /// Delete a message from a chat.
   Future<void> deleteMessage(int chatId, int messageId) async {
     final url = _buildMethodUri('deleteMessage');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert({'chat_id': chatId, 'message_id': messageId}),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert({'chat_id': chatId, 'message_id': messageId}),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to delete message: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to delete message: status code ${response.statusCode}');
@@ -376,11 +384,16 @@ class Bot {
     final toDelete = messageIds.toList(growable: false);
     final length = toDelete.length;
     for (var i = 0; i < length; i += 100) {
-      final response = await _client.post(
-        url,
-        body: _jsonEncoder.convert({'chat_id': chatId, 'message_ids': toDelete.sublist(i, math.min(i + 100, length))}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await _client
+          .post(
+            url,
+            body: _jsonEncoder.convert({
+              'chat_id': chatId,
+              'message_ids': toDelete.sublist(i, math.min(i + 100, length)),
+            }),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 12));
       if (response.statusCode == 200 || response.statusCode == 400) continue;
       l.w('Failed to delete messages: status code ${response.statusCode}', StackTrace.current);
       throw Exception('Failed to delete messages: status code ${response.statusCode}');
@@ -393,15 +406,17 @@ class Bot {
   /// Applied for supergroups and channels only.
   Future<void> banUser(int chatId, int userId, {int? untilDate}) async {
     final url = _buildMethodUri('banChatMember');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert({
-        'chat_id': chatId,
-        'user_id': userId,
-        if (untilDate != null) 'until_date': untilDate,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert({
+            'chat_id': chatId,
+            'user_id': userId,
+            if (untilDate != null) 'until_date': untilDate,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to ban user: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to ban user: status code ${response.statusCode}');
@@ -410,11 +425,13 @@ class Bot {
   /// [onlyIfBanned] - Do nothing if the user is not banned.
   Future<void> unbanUser(int chatId, int userId, {bool onlyIfBanned = true}) async {
     final url = _buildMethodUri('unbanChatMember');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert({'chat_id': chatId, 'user_id': userId, if (onlyIfBanned) 'only_if_banned': true}),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert({'chat_id': chatId, 'user_id': userId, if (onlyIfBanned) 'only_if_banned': true}),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to unban user: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to unban user: status code ${response.statusCode}');
@@ -423,11 +440,9 @@ class Bot {
   /// Get telegram chat info.
   Future<Map<String, Object?>> getChatInfo(int chatId) async {
     final url = _buildMethodUri('getChat');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert({'chat_id': chatId}),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(url, body: _jsonEncoder.convert({'chat_id': chatId}), headers: {'Content-Type': 'application/json'})
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) {
       l.w('Failed to get chat info: status code ${response.statusCode}', StackTrace.current);
       throw Exception('Failed to get chat info: status code ${response.statusCode}');
@@ -456,16 +471,18 @@ class Bot {
     bool big = true,
   }) async {
     final url = _buildMethodUri('setMessageReaction');
-    final response = await _client.post(
-      url,
-      body: _jsonEncoder.convert(<String, Object?>{
-        'chat_id': chatId,
-        'message_id': messageId,
-        'reaction': '[{"type":"emoji","emoji":"$reaction"}]',
-        'big': big,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+    final response = await _client
+        .post(
+          url,
+          body: _jsonEncoder.convert(<String, Object?>{
+            'chat_id': chatId,
+            'message_id': messageId,
+            'reaction': '[{"type":"emoji","emoji":"$reaction"}]',
+            'big': big,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode == 200 || response.statusCode == 400) return;
     l.w('Failed to set message reaction: status code ${response.statusCode}', StackTrace.current);
     throw Exception('Failed to set message reaction: status code ${response.statusCode}');
