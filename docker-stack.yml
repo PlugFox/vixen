@@ -24,7 +24,7 @@ services:
       CONFIG_VERBOSE: warn
       CONFIG_REPORT-HOUR: 16
       CONFIG_CLOWN: 5
-      CONFIG_CAS: on
+      CONFIG_CAS: enabled
     deploy:
       mode: replicated
       replicas: 1

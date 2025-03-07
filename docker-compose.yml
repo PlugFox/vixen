@@ -16,7 +16,7 @@ services:
       CONFIG_VERBOSE: all
       CONFIG_REPORT-HOUR: 16
       CONFIG_CLOWN: 5
-      CONFIG_CAS: on
+      CONFIG_CAS: enabled
     volumes:
       - ./data:/app/data
     build:
