@@ -8,6 +8,7 @@ import 'package:vixen/src/bot.dart';
 import 'package:vixen/src/captcha.dart';
 import 'package:vixen/src/constant/constants.dart';
 import 'package:vixen/src/database.dart';
+import 'package:vixen/src/retry.dart';
 import 'package:xxh3/xxh3.dart' as xxh3;
 
 /*
@@ -148,9 +149,11 @@ class MessageHandler {
   Future<bool> _checkWithCombotAntiSpam(int userId) async {
     if (!_combotAntiSpam) return true; // User is not a spammer
     try {
-      final response = await _httpClient
-          .get(_combotAntiSpamUri.replace(queryParameters: <String, String>{'user_id': userId.toString()}))
-          .timeout(const Duration(seconds: 3)); // Timeout after 3 seconds
+      final response = await retry(
+        () => _httpClient
+            .get(_combotAntiSpamUri.replace(queryParameters: <String, String>{'user_id': userId.toString()}))
+            .timeout(const Duration(seconds: 3)),
+      ); // Timeout after 3 seconds
       const allowedStatusCodes = {100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 304};
       if (!allowedStatusCodes.contains(response.statusCode)) {
         l.d('Failed to check user $userId with Combot Anti-Spam');

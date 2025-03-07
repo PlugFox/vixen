@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:vixen/src/database.dart';
+import 'package:vixen/src/retry.dart';
 
 /// A summarizer that uses the OpenAI API to summarize chat messages.
 class Summarizer {
@@ -48,18 +49,20 @@ class Summarizer {
       'response_format': <String, Object?>{'type': 'json_object'},
     };
 
-    final response = await _client
-        .post(
-          _url,
-          headers: <String, String>{
-            'Authorization': 'Bearer $_key',
-            'Content-Type': 'application/json; charset=utf-8',
-            'Accept': 'application/json',
-            'Accept-Charset': 'UTF-8',
-          },
-          body: bodyEncoder.convert(requestBody),
-        )
-        .timeout(const Duration(seconds: 10 * 60)); // 10 minutes
+    final response = await retry(
+      () => _client
+          .post(
+            _url,
+            headers: <String, String>{
+              'Authorization': 'Bearer $_key',
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+              'Accept-Charset': 'UTF-8',
+            },
+            body: bodyEncoder.convert(requestBody),
+          )
+          .timeout(const Duration(seconds: 10 * 60)),
+    ); // 10 minutes
 
     if (response.statusCode != 200)
       throw Exception('Failed to summarize chat messages: ${response.statusCode} ${response.body}');
