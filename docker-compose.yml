@@ -12,8 +12,11 @@ services:
       CONFIG_TOKEN: 123:ABC
       CONFIG_SECRET: abc123
       CONFIG_CHATS: -123,456,-789
-      CONFIG_DATABASE: /app/data/vixen.db
+      CONFIG_DB: /app/data/vixen.db
       CONFIG_VERBOSE: all
+      CONFIG_REPORT-HOUR: 16
+      CONFIG_CLOWN: 5
+      CONFIG_CAS: on
     volumes:
       - ./data:/app/data
     build:
