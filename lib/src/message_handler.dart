@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:http/http.dart' as http;
 import 'package:l/l.dart';
 import 'package:vixen/src/bot.dart';
 import 'package:vixen/src/captcha.dart';
@@ -51,12 +52,18 @@ class MessageHandler {
     required Database db,
     required Bot bot,
     required CaptchaQueue captchaQueue,
+    required bool combotAntiSpam,
     required int clownChance,
+    http.Client? httpClient,
+    Uri? combotAntiSpamUri,
   }) : _chats = chats,
        _db = db,
        _bot = bot,
        _captchaQueue = captchaQueue,
-       _clownChance = clownChance.clamp(0, 100);
+       _combotAntiSpam = combotAntiSpam,
+       _clownChance = clownChance.clamp(0, 100),
+       _httpClient = httpClient ?? http.Client(),
+       _combotAntiSpamUri = combotAntiSpamUri ?? Uri.parse('https://api.cas.chat/check');
 
   static final math.Random _rnd = math.Random();
 
@@ -72,8 +79,17 @@ class MessageHandler {
   /// Queue of captchas to send to users.
   final CaptchaQueue _captchaQueue;
 
+  /// Combot Anti-Spam enabled.
+  final bool _combotAntiSpam;
+
   /// Chance to send a clown reaction to a message.
   final int _clownChance;
+
+  /// HTTP client.
+  final http.Client _httpClient;
+
+  /// URI for Combot Anti-Spam.
+  final Uri _combotAntiSpamUri;
 
   // --- Delete messages --- //
 
@@ -124,6 +140,34 @@ class MessageHandler {
     // Delay to allow for more messages to be added to the list and batch delete them
     _toDeleteScheduled = true;
     Timer(const Duration(milliseconds: 250), _deleteMessages);
+  }
+
+  /// Check if the user is a spammer with Combot Anti-Spam.
+  /// Returns `true` if the user is not a spammer, `false` if the user is a spammer.
+  /// https://cas.chat/api
+  Future<bool> _checkWithCombotAntiSpam(int userId) async {
+    if (!_combotAntiSpam) return true;
+    try {
+      final response = await _httpClient.get(
+        _combotAntiSpamUri.replace(queryParameters: <String, String>{'user_id': userId.toString()}),
+      );
+      const allowedStatusCodes = {100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 304};
+      if (!allowedStatusCodes.contains(response.statusCode)) {
+        l.d('Failed to check user $userId with Combot Anti-Spam');
+        return true;
+      }
+      // {"ok":false,"description":"Record not found."}
+      // {"ok":true,"result":{"reasons":[2],"offenses":1,"messages":null,"time_added":"2025-02-25T09:04:53.000Z"}}
+      final codec = utf8.decoder.fuse(json.decoder);
+      if (codec.convert(response.bodyBytes) case <String, Object?>{'ok': true}) {
+        return false; // User is a spammer
+      } else {
+        return true; // User is not a spammer
+      }
+    } on Object catch (e, s) {
+      l.w('Failed to check user $userId with Combot Anti-Spam: $e', s);
+      return true;
+    }
   }
 
   // --- Handle message --- //
@@ -312,18 +356,45 @@ class MessageHandler {
           }
         }
 
-        final mention = switch (name) {
+        // Check if the user is a spammer with Combot Anti-Spam
+        {
+          final isNotSpammer = await _checkWithCombotAntiSpam(userId);
+          if (!isNotSpammer) {
+            // Ban the user for spamming
+            final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
+            _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
+            _db
+                .banUser(
+                  chatId: chatId,
+                  userId: userId,
+                  name: name.name ?? name.username ?? 'Unknown',
+                  reason: 'Combot Anti-Spam detected the user as a spammer without being verified',
+                  bannedAt: date,
+                  expiresAt: untilDate,
+                )
+                .ignore();
+            l.i('Banned user $userId for being detected as a spammer by Combot Anti-Spam in chat $chatId');
+            return;
+          }
+        }
+
+        /* final mention = switch (name) {
           (name: _, $name: String v, username: _, $username: _) when v.isNotEmpty => '[$v](tg://user?id=$userId)',
           (name: _, $name: _, username: _, $username: String v) when v.isNotEmpty => '[@$v](tg://user?id=$userId)',
           _ => '[Unknown](tg://user?id=$userId)',
-        };
+        }; */
+        final mention = Bot.userMention(userId, switch (name) {
+          (name: _, $name: String v, username: _, $username: _) when v.isNotEmpty => v,
+          (name: _, $name: _, username: _, $username: String v) when v.isNotEmpty => v,
+          _ => 'User',
+        });
         final captcha = await _captchaQueue.next();
         final String caption;
         {
           // Generate the caption for the message
           final captionBuffer =
               StringBuffer()
-                ..writeln('👋 Hello, *$mention*\\!')
+                ..writeln('👋 Hello, *$mention* \\[`$userId`\\] \\!')
                 ..writeln('\nPlease solve the _following captcha_ to continue chatting\\.');
           //captionBuffer.writeln(captcha.text);
           caption = captionBuffer.toString();

@@ -8,7 +8,7 @@ import 'package:vixen/src/constant/constants.dart';
 /// Parse arguments
 ArgParser _buildParser() =>
     ArgParser()
-      ..addFlag('help', abbr: 'h', negatable: false, help: 'Print this usage information')
+      ..addFlag('help', abbr: 'h', negatable: false, defaultsTo: false, help: 'Print this usage information')
       /* ..addSeparator('') */
       ..addOption(
         'token',
@@ -63,7 +63,6 @@ ArgParser _buildParser() =>
       )
       ..addOption(
         'offset',
-        abbr: 'o',
         mandatory: false,
         aliases: ['update'],
         help: 'Offset for Telegram updates',
@@ -77,6 +76,14 @@ ArgParser _buildParser() =>
         help: 'Verbose mode for output: all | debug | info | warn | error',
         defaultsTo: 'warn',
         valueHelp: 'info',
+      )
+      // https://cas.chat/api
+      ..addFlag(
+        'cas',
+        aliases: ['cas-check', 'cas-checker', 'combot-anti-spam', 'combot-anti-spam-check'],
+        help: 'Check messages with Combot Anti-Spam (CAS)',
+        negatable: true,
+        defaultsTo: true,
       )
       ..addOption(
         'openai-key',
@@ -123,7 +130,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     final parser = _buildParser();
     try {
       final results = parser.parse(arguments);
-      const flags = <String>{'help'};
+      const flags = <String>{'help', 'cas'};
       const options = <String>{
         'token',
         'chats',
@@ -166,7 +173,10 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
             option.toLowerCase(): byDefault,
       });
 
-      if (table['help'] == 'true') {
+      if (switch (table['help']?.trim().toLowerCase()) {
+        'true' || 'yes' || 'y' || '1' || '+' || 'on' || '' => true,
+        _ => false,
+      }) {
         io.stdout
           ..writeln(_help.trim())
           ..writeln()
@@ -203,6 +213,11 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
           String v when v.isNotEmpty => int.tryParse(v),
           _ => null,
         },
+        combotAntiSpam: switch (table['cas']?.trim().toLowerCase()) {
+          'true' || 'yes' || 'y' || '1' || '+' || 'on' || 'enable' || '' => true,
+          'false' || 'no' || 'n' || '0' || '-' || 'off' || 'disable' => false,
+          _ => true,
+        },
         openaiKey: table['openai-key'],
         openaiModel: table['openai-model'],
         openaiUrl: table['openai-url'],
@@ -237,6 +252,7 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
     required this.address,
     required this.port,
     required this.offset,
+    required this.combotAntiSpam,
     required this.openaiKey,
     required this.openaiModel,
     required this.openaiUrl,
@@ -268,6 +284,9 @@ final class Arguments extends UnmodifiableMapBase<String, String> {
 
   /// Offset for Telegram updates
   final int? offset;
+
+  /// Check messages with Combot Anti-Spam (CAS)
+  final bool combotAntiSpam;
 
   /// OpenAI API key for summarization
   final String? openaiKey;

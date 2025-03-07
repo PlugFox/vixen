@@ -11,8 +11,9 @@
       "args": [],
       "env": {
         "CONFIG_VERBOSE": "debug",
-        "CONFIG_DATABASE": ":memory:",
+        "CONFIG_DB": ":memory:",
         "CONFIG_OFFSET": "0",
+        "CONFIG_CAS": "TRUE",
         "CONFIG_CLOWN": "75",
       },
     },
@@ -27,6 +28,7 @@
       "env": {
         "CONFIG_VERBOSE": "debug",
         "CONFIG_OFFSET": "0",
+        "CONFIG_CAS": "TRUE",
         "CONFIG_CLOWN": "75",
       }
     },
