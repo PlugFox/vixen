@@ -367,7 +367,7 @@ class MessageHandler {
           final isNotSpammer = await _checkWithCombotAntiSpam(userId);
           if (!isNotSpammer) {
             // Ban the user for spamming
-            final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
+            final untilDate = DateTime.now().add(const Duration(days: 100)).millisecondsSinceEpoch ~/ 1000;
             _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
             _db
                 .banUser(
