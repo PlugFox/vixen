@@ -146,15 +146,15 @@ class MessageHandler {
   /// Returns `true` if the user is not a spammer, `false` if the user is a spammer.
   /// https://cas.chat/api
   Future<bool> _checkWithCombotAntiSpam(int userId) async {
-    if (!_combotAntiSpam) return true;
+    if (!_combotAntiSpam) return true; // User is not a spammer
     try {
-      final response = await _httpClient.get(
-        _combotAntiSpamUri.replace(queryParameters: <String, String>{'user_id': userId.toString()}),
-      );
+      final response = await _httpClient
+          .get(_combotAntiSpamUri.replace(queryParameters: <String, String>{'user_id': userId.toString()}))
+          .timeout(const Duration(seconds: 5));
       const allowedStatusCodes = {100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 304};
       if (!allowedStatusCodes.contains(response.statusCode)) {
         l.d('Failed to check user $userId with Combot Anti-Spam');
-        return true;
+        return true; // User is not a spammer
       }
       // {"ok":false,"description":"Record not found."}
       // {"ok":true,"result":{"reasons":[2],"offenses":1,"messages":null,"time_added":"2025-02-25T09:04:53.000Z"}}
@@ -164,9 +164,12 @@ class MessageHandler {
       } else {
         return true; // User is not a spammer
       }
+    } on TimeoutException {
+      l.d('Failed to check user $userId with Combot Anti-Spam: Timeout exception');
+      return true; // User is not a spammer
     } on Object catch (e, s) {
       l.w('Failed to check user $userId with Combot Anti-Spam: $e', s);
-      return true;
+      return true; // User is not a spammer
     }
   }
 
