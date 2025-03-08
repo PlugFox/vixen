@@ -144,15 +144,6 @@ abstract final class TelegramMessageComposer {
             ..write(Bot.escapeMarkdownV2(topic.title))
             ..write('](https://t.me/c/${Bot.shortId(chatId)}/${topic.message})')
             ..writeln('*');
-      /*
-            ..write(nbsp * 6)
-            ..write('_')
-            ..write('[')
-            ..write(Bot.escapeMarkdownV2(topic.count.toString()))
-            ..write(' ${topic.count > 1 ? 'messages' : 'message'}]')
-            ..write('(https://t.me/c/${Bot.shortId(chatId)}/${topic.message})')
-            ..writeln('_')
-            ..writeln(); */
 
       // Summary
       if (topic.summary.isNotEmpty) {
@@ -210,7 +201,8 @@ abstract final class TelegramMessageComposer {
             topicBuffer
               ..write('**>')
               ..write('*')
-              ..write(Bot.userMention(quote.uid, quote.username))
+              //..write(Bot.userMention(quote.uid, quote.username))
+              ..write(Bot.escapeMarkdownV2(quote.username))
               ..write(' ')
               ..write('[')
               ..write(nbsp)
@@ -234,7 +226,8 @@ abstract final class TelegramMessageComposer {
             topicBuffer
               ..write('**>')
               ..write('*')
-              ..write(Bot.userMention(quote.uid, quote.username))
+              //..write(Bot.userMention(quote.uid, quote.username))
+              ..write(Bot.escapeMarkdownV2(quote.username))
               ..write(' ')
               ..write('[')
               ..write(nbsp)

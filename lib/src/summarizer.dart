@@ -110,9 +110,10 @@ class Summarizer {
               .whereType<Map<String, Object?>>()
               .map<SummaryQuote?>((e) {
                 if (e case <String, Object?>{'quote': String quote, 'message_id': int message}) {
-                  // Extract quote and user info
-                  final msg = messages[message];
-                  if (msg == null) return null;
+                  final msg = messages[message]; // Extract quote and user info
+                  if (msg == null) return null; // Skip if message not found
+                  // Skip if quote not found in original message:
+                  if (!msg.content.toLowerCase().contains(quote.toLowerCase())) return null;
                   return (message: message, quote: quote, uid: msg.userId, username: msg.username);
                 } else {
                   return null;
