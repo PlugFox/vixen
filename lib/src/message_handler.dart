@@ -253,7 +253,7 @@ class MessageHandler {
         );
 
         // Ban the user for additional 7 days for sending a story, audio, video or voice
-        if (const {'story', 'audio', 'video', 'voice'}.contains(type)) {
+        if (const <String>{'story', 'audio', 'video', 'voice'}.contains(type)) {
           final untilDate = DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000;
           _bot.banUser(chatId, userId, untilDate: untilDate).ignore();
           _db
@@ -271,7 +271,7 @@ class MessageHandler {
         }
 
         // Ban the user for additional 7 days if the user is already banned
-        if (await _db.isBanned(userId)) {
+        /* if (await _db.isBanned(userId)) {
           _bot
               .banUser(
                 chatId,
@@ -281,7 +281,7 @@ class MessageHandler {
               .ignore();
           l.i('Banned user $userId because the user is already banned in chat $chatId');
           return;
-        }
+        } */
 
         // Check if the message have a lot of duplicates as a spam
         {
