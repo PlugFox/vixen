@@ -407,6 +407,10 @@ final class Reports {
   }
 }
 
+/// Select at most 3 active users in the given time frame.
+/// Returns the chat id, user id, username, last seen date, and message count.
+/// The result is ordered by message count in descending order.
+/// User should have more than 9 messages to be considered in this top list.
 const String _mostActiveUsersQuery = '''
 WITH RankedUsersTmp AS (
   SELECT
@@ -425,7 +429,7 @@ WITH RankedUsersTmp AS (
     msg.chat_id,
     msg.user_id
   HAVING
-    COUNT(1) > 2
+    COUNT(1) > 9
 )
 SELECT
   cid,
