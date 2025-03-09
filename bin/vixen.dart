@@ -425,6 +425,27 @@ void sendReportsTimer(Database db, Bot bot, Set<int> chats, int reportAtHour) {
 
             // Generate the chart
             final data = await reports.chartData(from: from, to: to, chatId: cid, random: false);
+
+            final empty = <List<int>>[
+              data.parts,
+              data.sent,
+              data.captcha,
+              data.verified,
+              data.banned,
+              data.deleted,
+            ].every((l) => l.every((e) => e == 0));
+            if (empty) {
+              // Nothing to report
+              l.d(
+                'Empty report for chat $cid '
+                '${switch (chatInfo?.title) {
+                  String title => '($title)',
+                  _ => '',
+                }}',
+              );
+              continue;
+            }
+
             final chart = await reports.chartPng(
               data: data,
               width: 720, // 480, // 1280
