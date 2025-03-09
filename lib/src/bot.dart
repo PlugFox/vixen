@@ -34,6 +34,7 @@ class Bot {
 
   /// Escape special characters in a MarkdownV2 string.
   static String escapeMarkdownV2(String text) {
+    if (text.isEmpty) return text;
     const specialChars = r'_*\[\]()~`>#+\-=|{}.!';
     final buffer = StringBuffer();
     for (final rune in text.runes) {
