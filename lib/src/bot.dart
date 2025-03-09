@@ -37,10 +37,8 @@ class Bot {
     const specialChars = r'_*\[\]()~`>#+\-=|{}.!';
     final buffer = StringBuffer();
     for (final rune in text.runes) {
-      var char = String.fromCharCode(rune);
-      if (specialChars.contains(char)) {
-        buffer.write(r'\');
-      }
+      final char = String.fromCharCode(rune);
+      if (specialChars.contains(char)) buffer.write(r'\');
       buffer.write(char);
     }
     return buffer.toString();
