@@ -113,9 +113,11 @@ class Summarizer {
                   final msg = messages[message]; // Extract quote and user info
                   if (msg == null) return null; // Skip if message not found
                   var content = quote.trim();
-                  // Skip if quote not found in original message:
+                  // Skip if quote not found in original message
                   //if (!msg.content.toLowerCase().contains(content.toLowerCase())) return null;
+                  // Use full message if it's not too long
                   if (msg.content.length <= content.length * 1.5) content = msg.content.trim();
+                  // Skip if quote is too short
                   if (content.isEmpty) return null;
                   return (message: message, quote: content, uid: msg.userId, username: msg.username);
                 } else {
