@@ -112,9 +112,12 @@ class Summarizer {
                 if (e case <String, Object?>{'quote': String quote, 'message_id': int message}) {
                   final msg = messages[message]; // Extract quote and user info
                   if (msg == null) return null; // Skip if message not found
+                  var content = quote.trim();
                   // Skip if quote not found in original message:
-                  if (!msg.content.trim().toLowerCase().contains(quote.trim().toLowerCase())) return null;
-                  return (message: message, quote: quote, uid: msg.userId, username: msg.username);
+                  //if (!msg.content.toLowerCase().contains(content.toLowerCase())) return null;
+                  if (msg.content.length <= content.length * 1.5) content = msg.content.trim();
+                  if (content.isEmpty) return null;
+                  return (message: message, quote: content, uid: msg.userId, username: msg.username);
                 } else {
                   return null;
                 }
