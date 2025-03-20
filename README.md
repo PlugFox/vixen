@@ -30,6 +30,12 @@ It automatically deletes initial messages from unverified users and supports mul
 
 ![](.img/report_1.webp)
 
+## 🛡️ Manages the following chats
+
+- [\[RU\] Dart & Flutter](https://t.me/ru_dart)
+- [Dart и Flutter](https://t.me/learn_flutter)
+- [Flutter Architecture](https://t.me/flutter_architecture)
+
 ## 🚀 Getting Started
 
 The bot supports configuration via command-line arguments, environment variables, or a `.env` file.
