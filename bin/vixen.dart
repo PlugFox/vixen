@@ -160,7 +160,20 @@ void collectLogs(Database db, Queue<LogMessage> buffer, {Duration interval = con
               )
               .toList(growable: false);
           buffer.clear();
-          await db.batch((batch) => batch.insertAll(db.logger, rows, mode: InsertMode.insertOrReplace));
+          // Implement log retention by deleting logs older than 14 days
+          // and keeping the last logs.
+          await db.batch((batch) {
+            batch
+              // Remove logs older than 14 days
+              ..deleteWhere(
+                db.logger,
+                (tbl) => tbl.time.isSmallerThanValue(
+                  DateTime.now().subtract(const Duration(days: 14)).millisecondsSinceEpoch ~/ 1000,
+                ),
+              )
+              // Insert new logs
+              ..insertAll(db.logger, rows, mode: InsertMode.insertOrReplace);
+          });
           //l.d('Inserted ${rows.length} logs');
         } on Object catch (e, s) {
           l.e('Failed to insert logs: $e', s);

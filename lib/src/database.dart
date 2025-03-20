@@ -144,7 +144,7 @@ class Database extends _$Database
   }
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => DatabaseMigrationStrategy(database: this);
@@ -261,6 +261,11 @@ class DatabaseMigrationStrategy implements MigrationStrategy {
             );
           }
         }
+      case 8:
+        // Migration from 8 to 9
+        // Delete all logs that are older than the current time (in seconds)
+        await (db.delete(db.logger)
+          ..where((tbl) => tbl.time.isBiggerThanValue(DateTime.now().millisecondsSinceEpoch ~/ 1000))).go();
       default:
         if (kDebugMode) throw UnimplementedError('Unsupported migration from $from to $to');
     }
