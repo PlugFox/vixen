@@ -120,7 +120,7 @@ class Bot {
   /// Fetch updates from the Telegram API.
   @pragma('vm:prefer-inline')
   Future<List<({int id, Map<String, Object?> update})>> _getUpdates(Uri url) async {
-    final response = await _client.get(url).timeout(_interval * 2);
+    final response = await _client.get(url /*, headers: {'Connection': 'Keep-Alive'} */).timeout(_interval * 2);
     if (response.statusCode != 200) {
       l.w('Failed to fetch updates: status code ${response.statusCode}', StackTrace.current);
       return const [];
