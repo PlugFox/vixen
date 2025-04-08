@@ -20,6 +20,7 @@ on:
       - "pubspec.yaml"
       - ".github/**.yaml"
       - ".github/**.yml"
+      - "bin/**.dart"
       - "lib/**.dart"
       - "test/**.dart"
       - "example/**.dart"
