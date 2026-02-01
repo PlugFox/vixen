@@ -92,5 +92,5 @@ dev_dependencies:
   # Code generation
   build_runner: ^2.4.15
   drift_dev: ^2.25.2
-  pubspec_generator: ^4.1.0-pre.1
+  pubspec_generator: ^5.0.1
   #json_serializable: ^6.8.0
